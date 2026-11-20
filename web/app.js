@@ -36,9 +36,9 @@ const API = (() => {
   return v.replace(/\/$/, '');
 })();
 const DASHBOARD = (() => {
+  if (['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)) return 'http://localhost:5190';
   const v = (document.querySelector('meta[name="kundar-dashboard"]')?.content || '').trim();
-  if (v === 'auto') return ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname) ? 'http://localhost:5190' : '';
-  return v.replace(/\/$/, '');
+  return v === 'auto' ? '' : v.replace(/\/$/, '');
 })();
 if (DASHBOARD) document.getElementById('navHost').href = DASHBOARD;
 const FALLBACK = [

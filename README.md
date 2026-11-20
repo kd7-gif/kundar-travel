@@ -1,5 +1,7 @@
 # Kundar Travel
 
+**Live:** [kundar-travel.netlify.app](https://kundar-travel.netlify.app) · Host dashboard: [kundar-travel-host.netlify.app](https://kundar-travel-host.netlify.app) (demo login below) · API: [kundar-travel-api.onrender.com](https://kundar-travel-api.onrender.com/api/health)
+
 A stays-booking site for places in **Lagos, Abuja, Ibadan and Port Harcourt**, based in Lagos and Abuja. It has three parts: a cinematic public site, an Express + MySQL API that rules out double bookings in the database itself, and a React dashboard where hosts run their places.
 
 > **Demo project — payments are unavailable.** No payment provider is connected and no money is ever taken. See [Demo limitations](#demo-limitations).
