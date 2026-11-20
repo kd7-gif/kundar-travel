@@ -156,7 +156,7 @@ Errors look like `{ "error": { "code": "bad_request", "message": "checkout must 
 
 - **Payments are unavailable.** There is no payment provider. Guests can hold dates for 15 minutes; pressing "Continue to payment" shows "Payment is unavailable — this is a demo project." Holds then expire on their own, or the guest releases them, and the nights free up again. Bookings never become confirmed. The payment step sits behind `PAYMENTS_ENABLED=false`, so a provider such as Paystack can be added later.
 - Listings, the host and the reviews are fictional demo content.
-- Uploaded photos are stored on the API server's disk (`api/uploads/`), and aren't resized. A real deployment would put them on object storage or a CDN.
+- Host-uploaded photos are stored in MySQL (so they survive Render's temporary disk) and aren't resized. A busier site would put them on object storage or a CDN.
 
 ## Roadmap
 
@@ -166,9 +166,35 @@ Errors look like `{ "error": { "code": "bad_request", "message": "checkout must 
 4. ~~Host dashboard (React): listings and photos, blocking dates, viewing holds~~ ✓
 5. Deploy: Netlify (web), Render (API), hosted MySQL
 
-## Deploy the front end (Netlify)
+## Deploy (free tiers)
 
-Import the GitHub repo in Netlify, leave the build command empty and set the publish directory to `web`.
+| Part | Host | Notes |
+|---|---|---|
+| Database | [TiDB Cloud Starter](https://www.pingcap.com/tidb-cloud-starter-pricing-details/) | Free, MySQL-compatible, needs TLS (`DB_SSL=true`), port 4000 |
+| API | [Render](https://render.com/docs/free) free web service | `render.yaml` blueprint. Sleeps after 15 minutes idle and takes up to a minute to wake |
+| Site | Netlify, base directory `web` | `web/netlify.toml` |
+| Dashboard | Netlify, base directory `dashboard` | `dashboard/netlify.toml` |
+
+Both Netlify sites **proxy `/api/*` and `/uploads/*` to the API**, so the browser only ever talks to its own domain. That keeps the login cookie first-party (Safari blocks third-party cookies) and means no CORS setup is needed. While the API is waking up, the site shows its built-in listings and retries, and the dashboard shows a "waking up" message. Host photos are stored in MySQL because Render's free disk is wiped on every restart.
+
+**1. Database.** Create a TiDB Cloud Starter cluster. Under **Connect**, choose "General" and note the host, port (4000), user and password. Then create `api/.env.production` (it's gitignored):
+
+```
+DB_HOST=gateway01.xx-xxxx-1.prod.aws.tidbcloud.com
+DB_PORT=4000
+DB_USER=xxxxxxxx.root
+DB_PASSWORD=your-tidb-password
+DB_NAME=kundar
+DB_SSL=true
+```
+
+```bash
+cd api && npm run db:seed:prod
+```
+
+**2. API.** In Render choose **New → Blueprint** and pick the repo. Fill in `DB_HOST`, `DB_USER` and `DB_PASSWORD` from step 1. Set `WEB_PUBLIC_URL` to the site's Netlify URL and `CORS_ORIGIN` to both Netlify URLs, comma-separated (you can fill these in after step 3). If the name `kundar-travel-api` is taken, update the API URL in both `netlify.toml` files.
+
+**3. Site and dashboard.** In Netlify, **Add new site → Import an existing project** twice from the same repo: once with base directory `web`, once with base directory `dashboard`. For the dashboard, add the environment variable `VITE_SITE_URL` = the site's URL. Then put the dashboard's URL into `<meta name="kundar-dashboard">` in `web/index.html`, so "Become a host" points to it.
 
 ## Files
 

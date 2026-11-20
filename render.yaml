@@ -1,0 +1,48 @@
+# Render Blueprint for the Kundar Travel API.
+# In Render: New → Blueprint → pick this repo. Fill in the values marked "sync: false".
+services:
+  - type: web
+    name: kundar-travel-api
+    runtime: node
+    plan: free
+    rootDir: api
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # TiDB Cloud Starter (MySQL-compatible) connection details
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: "4000"
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        value: kundar
+      - key: DB_SSL
+        value: "true"
+      - key: DB_POOL_SIZE
+        value: "5"
+      # The site and dashboard reach the API through Netlify's proxy (same origin),
+      # so cookies are first-party and Lax works. Secure because Netlify is HTTPS.
+      - key: COOKIE_SAMESITE
+        value: lax
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: TRUST_PROXY
+        value: "2"
+      # Empty = photo URLs are relative (/uploads/...), served via the Netlify proxy
+      - key: API_PUBLIC_URL
+        value: ""
+      # The public site's URL, used for demo photo links inside the dashboard
+      - key: WEB_PUBLIC_URL
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
+      - key: PAYMENTS_ENABLED
+        value: "false"

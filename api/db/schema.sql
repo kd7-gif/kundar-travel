@@ -2,6 +2,7 @@
 -- Money is stored in kobo (₦1 = 100 kobo) as integers. Dates are calendar dates (Africa/Lagos).
 
 SET FOREIGN_KEY_CHECKS = 0;
+DROP TABLE IF EXISTS photo_files;
 DROP TABLE IF EXISTS sessions;
 DROP TABLE IF EXISTS reviews;
 DROP TABLE IF EXISTS booking_nights;
@@ -60,6 +61,15 @@ CREATE TABLE listing_photos (
   position   TINYINT UNSIGNED NOT NULL DEFAULT 0,  -- 0 = cover
   CONSTRAINT fk_photo_listing FOREIGN KEY (listing_id) REFERENCES listings(id) ON DELETE CASCADE,
   INDEX idx_photo_listing (listing_id, position)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Photos uploaded by hosts are stored in the database, so they survive on hosts
+-- with a temporary disk (e.g. Render's free plan). Served at /uploads/<name>.
+CREATE TABLE photo_files (
+  name       VARCHAR(80) PRIMARY KEY,
+  mime       VARCHAR(30) NOT NULL,
+  bytes      MEDIUMBLOB NOT NULL,           -- uploads are capped at 5 MB by the API
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- A booking is either a guest stay or a host block.

@@ -5,7 +5,6 @@ import { readFile } from 'node:fs/promises';
 
 process.env.DB_NAME = process.env.TEST_DB_NAME || 'kundar_test';
 process.env.DISABLE_RATE_LIMIT = 'true';
-process.env.UPLOAD_DIR = new URL('../uploads-test', import.meta.url).pathname;
 
 const { seed, defaultConfig, DEMO_HOST } = await import('../db/seed-lib.js');
 const { createApp } = await import('../src/app.js');

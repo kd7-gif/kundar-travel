@@ -1,14 +1,12 @@
 import { Router } from 'express';
 import express from 'express';
 import { randomBytes } from 'node:crypto';
-import { mkdir, writeFile, unlink } from 'node:fs/promises';
-import path from 'node:path';
 import { pool, withTransaction } from '../db.js';
 import { badRequest, notFound, HttpError } from '../lib/errors.js';
 import { isIsoDate, nightsCount, todayLagos, addDays } from '../lib/dates.js';
 import { insertBookingWithNights } from '../lib/nights.js';
 import { sweepExpiredHolds } from '../lib/holds.js';
-import { mediaUrl, sniffImage, UPLOAD_DIR } from '../lib/media.js';
+import { mediaUrl, sniffImage } from '../lib/media.js';
 import { CITIES } from './listings.js';
 
 const TYPES = ['Apartments', 'Houses', 'Villas'];
@@ -234,13 +232,15 @@ hostRouter.post('/listings/:id/photos',
     const [[{ n }]] = await pool.query('SELECT COUNT(*) AS n FROM listing_photos WHERE listing_id = ?', [row.id]);
     if (n >= MAX_PHOTOS) throw badRequest(`A listing can have up to ${MAX_PHOTOS} photos`);
 
-    await mkdir(UPLOAD_DIR, { recursive: true });
     const file = `${row.id}-${randomBytes(8).toString('hex')}.${ext}`;
-    await writeFile(path.join(UPLOAD_DIR, file), req.body);
     const url = `uploads/${file}`;
     const alt = String(req.get('x-photo-alt') || `${row.name}, ${row.area}`).slice(0, 200);
-    await pool.query('INSERT INTO listing_photos (listing_id, url_small, url_large, alt, position) VALUES (?, ?, ?, ?, ?)',
-      [row.id, url, url, alt, n]);
+    await withTransaction(async conn => {
+      await conn.query('INSERT INTO photo_files (name, mime, bytes) VALUES (?, ?, ?)',
+        [file, ext === 'jpg' ? 'image/jpeg' : `image/${ext}`, req.body]);
+      await conn.query('INSERT INTO listing_photos (listing_id, url_small, url_large, alt, position) VALUES (?, ?, ?, ?, ?)',
+        [row.id, url, url, alt, n]);
+    });
     res.status(201).json({ photos: await photosFor(row.id) });
   });
 
@@ -272,7 +272,7 @@ hostRouter.delete('/listings/:id/photos/:photoId', async (req, res) => {
   });
   if (removedUrl?.startsWith('uploads/')) {
     const [[{ n }]] = await pool.query('SELECT COUNT(*) AS n FROM listing_photos WHERE url_large = ?', [removedUrl]);
-    if (!n) await unlink(path.join(UPLOAD_DIR, path.basename(removedUrl))).catch(() => {});
+    if (!n) await pool.query('DELETE FROM photo_files WHERE name = ?', [removedUrl.slice('uploads/'.length)]);
   }
   res.json({ photos: await photosFor(listing.id) });
 });

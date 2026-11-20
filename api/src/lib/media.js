@@ -1,14 +1,12 @@
 // Turns stored photo paths into URLs the browser can load.
-//   'uploads/…'  → files uploaded by hosts, served by this API
+//   'uploads/…'  → photos uploaded by hosts (stored in MySQL, served by this API)
 //   'img/…'      → the demo photos that ship with the website (web/img)
 //   'https://…'  → already absolute (e.g. a CDN), left alone
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+//
+// API_PUBLIC_URL: where browsers reach the API. Empty string = same origin
+// (production, where Netlify proxies /uploads to the API).
 
-export const UPLOAD_DIR = process.env.UPLOAD_DIR
-  || path.join(path.dirname(fileURLToPath(import.meta.url)), '../../uploads');
-
-const apiBase = () => (process.env.API_PUBLIC_URL || `http://localhost:${process.env.PORT || 4000}`).replace(/\/$/, '');
+const apiBase = () => (process.env.API_PUBLIC_URL ?? `http://localhost:${process.env.PORT || 4000}`).replace(/\/$/, '');
 const webBase = () => (process.env.WEB_PUBLIC_URL || 'http://localhost:5180').replace(/\/$/, '');
 
 /** audience 'web' = the public site (img/ paths stay relative); 'dashboard' = another origin. */

@@ -66,7 +66,10 @@ const REVIEW_LINES = [
 ];
 
 export async function seed(cfg = defaultConfig(), { quiet = false } = {}) {
-  const conn = await mysql.createConnection({ ...cfg, multipleStatements: true, dateStrings: true });
+  const { database, ...server } = cfg;
+  const conn = await mysql.createConnection({ ...server, multipleStatements: true, dateStrings: true });
+  await conn.query(`CREATE DATABASE IF NOT EXISTS \`${database.replace(/`/g, '')}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+  await conn.query(`USE \`${database.replace(/`/g, '')}\``);
     try {
     await conn.query(await readFile(new URL('./schema.sql', import.meta.url), 'utf8'));
     await conn.beginTransaction();

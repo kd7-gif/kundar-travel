@@ -15,7 +15,7 @@ h1,h2,h3,h4{margin:0;font-weight:400}
 h1,h2{font-family:"Gilda Display",Georgia,serif}
 code{font-size:.9em;background:rgba(0,0,0,.06);padding:1px 5px;border-radius:4px}
 
-.boot{display:grid;place-items:center;min-height:100vh;color:var(--muted)}
+.boot{display:grid;place-items:center;min-height:100vh;color:var(--muted);padding:24px;text-align:center;line-height:1.5}
 .banner{background:#fff3e6;color:var(--hold-ink);padding:10px 20px;font-size:14px;text-align:center}
 .muted{color:var(--muted)}
 .small{font-size:13px}

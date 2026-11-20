@@ -14,13 +14,35 @@ export default function App() {
   const [user, setUser] = useState(undefined); // undefined = still checking
   const [apiDown, setApiDown] = useState(false);
 
+  const [waking, setWaking] = useState(false);
+
   useEffect(() => {
-    api('/api/auth/me')
-      .then(r => setUser(r.user))
-      .catch(() => { setApiDown(true); setUser(null); });
+    // Free hosting sleeps when idle; the first request can time out while the API wakes up.
+    let cancelled = false;
+    (async () => {
+      for (let attempt = 1; attempt <= 6 && !cancelled; attempt++) {
+        try {
+          const r = await api('/api/auth/me');
+          if (!cancelled) { setApiDown(false); setUser(r.user); }
+          return;
+        } catch (err) {
+          if (err.status && err.status < 500) { if (!cancelled) setUser(null); return; }
+          if (!cancelled) setWaking(true);
+          await new Promise(res => setTimeout(res, 5000));
+        }
+      }
+      if (!cancelled) { setApiDown(true); setUser(null); }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
-  if (user === undefined) return <div className="boot">Loading…</div>;
+  if (user === undefined) {
+    return (
+      <div className="boot">
+        {waking ? 'Waking up the Kundar API — free servers sleep when nobody’s using them. This can take up to a minute…' : 'Loading…'}
+      </div>
+    );
+  }
 
   const isHost = user && (user.role === 'host' || user.role === 'admin');
   return (

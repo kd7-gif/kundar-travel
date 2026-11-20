@@ -21,10 +21,14 @@ root.classList.add('intro');
    Listings come from the API (see api/). FALLBACK is used only when the
    API can't be reached, so the static site still works on its own.
    --------------------------------------------------------- */
-// <meta name="kundar-api"> holds the API's base URL. "auto" means: on a local machine use
-// the same hostname on port 4000 (so the session cookie counts as same-site), otherwise none.
+// <meta name="kundar-api"> says where the API is:
+//   "auto" — on this machine: same hostname on port 4000 (so the login cookie is same-site);
+//            when deployed: same origin, because Netlify proxies /api and /uploads to the API
+//   "off"  — no API; the site uses its built-in listings
+//   a URL  — call the API there directly
 const API = (() => {
-  const v = (document.querySelector('meta[name="kundar-api"]')?.content || '').trim();
+  const v = (document.querySelector('meta[name="kundar-api"]')?.content || 'auto').trim();
+  if (v === 'off') return null;
   if (v === 'auto') {
     const local = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
     return local ? `${location.protocol}//${location.hostname}:4000` : '';
@@ -67,7 +71,7 @@ let ALL = FALLBACK.map(fromFallback);   // every listing (for detail + similar)
 let apiOnline = false;
 
 async function api(path, { method = 'GET', body } = {}) {
-  if (!API) throw Object.assign(new Error('No API configured'), { status: 0 });
+  if (API === null) throw Object.assign(new Error('No API configured'), { status: 0 });
   const res = await fetch(API + path, {
     method,
     credentials: 'include',              // send the session cookie
@@ -457,7 +461,11 @@ renderGrid($('#grid'), ALL);
 const secTitle = $('#stays .sec-head h2');
 const DEFAULT_TITLE = secTitle.textContent;
 
+// Free hosting sleeps when idle, so the first call can time out while the API wakes up.
+// Keep the built-in listings on screen and quietly retry a few times.
+let listingTries = 0;
 async function loadListings() {
+  listingTries++;
   try {
     const data = await api('/api/listings');
     ALL = data.listings.map(fromApi);
@@ -470,7 +478,9 @@ async function loadListings() {
     }
     initSession();
   } catch (err) {
-    console.info('[Kundar] API unavailable, showing built-in listings:', err.message);
+    if (API === null) return;
+    if (listingTries < 5) setTimeout(loadListings, 6000 * listingTries);
+    else console.info('[Kundar] API unavailable, showing built-in listings:', err.message);
   }
 }
 
