@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { pool } from '../db.js';
 import { badRequest, notFound } from '../lib/errors.js';
 import { isIsoDate, nightsCount, todayLagos, addDays } from '../lib/dates.js';
+import { mediaUrl } from '../lib/media.js';
 
 export const CITIES = ['Lagos', 'Abuja', 'Ibadan', 'Port Harcourt'];
 const MAX_NIGHTS = 60;
@@ -28,7 +29,7 @@ function serialize(row) {
     about: row.about,
     rating: Number(row.rating),
     reviews: row.review_count,
-    image: { small: row.url_small, large: row.url_large, alt: row.alt }
+    image: { small: mediaUrl(row.url_small), large: mediaUrl(row.url_large), alt: row.alt }
   };
 }
 
@@ -114,7 +115,7 @@ listingsRouter.get('/:id', async (req, res) => {
     listing: {
       ...serialize(row),
       host: { name: row.host_name, avatar: row.host_avatar },
-      photos
+      photos: photos.map(p => ({ ...p, small: mediaUrl(p.small), large: mediaUrl(p.large) }))
     }
   });
 });

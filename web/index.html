@@ -8,6 +8,8 @@
 <!-- Base URL of the Kundar Travel API, e.g. https://kundar-api.onrender.com
      "auto" = same hostname on port 4000 when running locally; empty = built-in demo listings only. -->
 <meta name="kundar-api" content="auto">
+<!-- Host dashboard URL ("auto" = same hostname on port 5190 locally). -->
+<meta name="kundar-dashboard" content="auto">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Gilda+Display&family=Urbanist:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -33,7 +35,7 @@
     <a href="#footer">Contact Us</a>
   </nav>
   <div class="nav-right">
-    <a href="#" class="nav-host">Become a host</a>
+    <a href="#" class="nav-host" id="navHost">Become a host</a>
     <button class="nav-globe" type="button" aria-label="Language">
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 3.8 5.6 3.8 9s-1.2 6.4-3.8 9c-2.6-2.6-3.8-5.6-3.8-9S9.4 5.6 12 3z"/></svg>
     </button>

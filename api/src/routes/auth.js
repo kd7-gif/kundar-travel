@@ -34,12 +34,13 @@ export const authRouter = Router();
 // POST /api/auth/signup { name, email, password }
 authRouter.post('/signup', signupLimiter, async (req, res) => {
   const { name, email, password } = readCredentials(req.body, { withName: true });
+  const role = req.body?.asHost === true ? 'host' : 'guest';   // anyone may list their own place
   const hash = await hashPassword(password);
   let id;
   try {
     const [r] = await pool.query(
       'INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)',
-      [name, email, hash, 'guest']
+      [name, email, hash, role]
     );
     id = r.insertId;
   } catch (err) {
@@ -47,7 +48,7 @@ authRouter.post('/signup', signupLimiter, async (req, res) => {
     throw err;
   }
   await startSession(res, id);
-  res.status(201).json({ user: publicUser({ id, name, email, role: 'guest', avatar: null }) });
+  res.status(201).json({ user: publicUser({ id, name, email, role, avatar: null }) });
 });
 
 // POST /api/auth/login { email, password }
@@ -67,6 +68,12 @@ authRouter.post('/login', loginLimiter, async (req, res) => {
 authRouter.post('/logout', async (req, res) => {
   await endSession(req, res);
   res.status(204).end();
+});
+
+// POST /api/auth/become-host → turns a guest account into a host account
+authRouter.post('/become-host', requireAuth, async (req, res) => {
+  if (req.user.role === 'guest') await pool.query(`UPDATE users SET role = 'host' WHERE id = ? AND role = 'guest'`, [req.user.id]);
+  res.json({ user: publicUser({ ...req.user, role: req.user.role === 'guest' ? 'host' : req.user.role }) });
 });
 
 // GET /api/auth/me → { user } or { user: null }

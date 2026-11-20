@@ -1,6 +1,6 @@
 # Kundar Travel
 
-A stays-booking site for places in **Lagos, Abuja, Ibadan and Port Harcourt**, based in Lagos and Abuja. It has a cinematic front end and an Express + MySQL API that rules out double bookings in the database itself.
+A stays-booking site for places in **Lagos, Abuja, Ibadan and Port Harcourt**, based in Lagos and Abuja. It has three parts: a cinematic public site, an Express + MySQL API that rules out double bookings in the database itself, and a React dashboard where hosts run their places.
 
 > **Demo project — payments are unavailable.** No payment provider is connected and no money is ever taken. See [Demo limitations](#demo-limitations).
 
@@ -17,6 +17,15 @@ A stays-booking site for places in **Lagos, Abuja, Ibadan and Port Harcourt**, b
 - "My stays" drawer listing your holds with live countdowns, plus released and expired ones
 - Fully responsive with no horizontal scroll; a custom cursor on desktop (add `?rec` to the URL for a larger cursor when screen-recording)
 - If the API can't be reached, the site falls back to built-in listings, so the static site still works on its own
+
+**Host dashboard** (`dashboard/`, React 18 + Vite)
+- Log in as a host, or create a host account (a guest account can be upgraded)
+- Overview: live holds, value on hold, holds in the last 30 days, blocked nights ahead
+- Places: add a place, edit its details, upload photos (drag and drop), choose the cover photo, then publish or pause it. New places stay hidden until they have a photo and are published
+- Calendar: two months side by side showing guest holds and your blocks. Click a first and last night to block dates; click a block to unblock it. Blocks use the same one-row-per-night guard as guest holds, so a host can't block over a live hold
+- Guest holds: every Book Now on your places, with live countdowns
+
+**Demo host login:** `adaeze@host.kundar.test` / `kundar-host-demo`. Adaeze runs the eight sample stays; the login page can fill this in for you.
 
 **API** (`api/`, Node + Express 5 + MySQL)
 - Listings search by city, dates and number of guests, returning only stays that are free for every night
@@ -75,7 +84,17 @@ python3 -m http.server 5180 --directory web
 
 Then open http://localhost:5180. The API URL comes from `<meta name="kundar-api">` in `web/index.html`: `auto` uses the same hostname on port 4000 when running locally (so the login cookie counts as same-site); in production, put the API's full URL there.
 
-**4. Run the tests** (optional). They use a separate `kundar_test` database, rebuilt on every run:
+**4. Start the host dashboard** (in a third terminal):
+
+```bash
+cd dashboard
+npm install
+npm run dev                 # http://localhost:5190
+```
+
+In development, Vite proxies `/api` and `/uploads` to the API on port 4000, so the dashboard's login cookie is same-origin.
+
+**5. Run the tests** (optional). They use a separate `kundar_test` database, rebuilt on every run:
 
 ```sql
 CREATE DATABASE kundar_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -103,8 +122,24 @@ cd api && npm test
 | GET | `/api/bookings/:id` | 🔒 One of your bookings |
 | DELETE | `/api/bookings/:id` | 🔒 Releases a hold and frees its nights |
 | POST | `/api/bookings/:id/pay` | 🔒 Always **503** `payments_unavailable` in this demo |
+| POST | `/api/auth/become-host` | 🔒 Turns a guest account into a host account |
 
 🔒 = needs a logged-in session.
+
+**Host endpoints** (host accounts only; a host only ever sees their own places, and other hosts' places return 404):
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/api/host/summary` | Counts for the overview |
+| GET | `/api/host/bookings?status=live` | Guest holds on your places |
+| GET / POST | `/api/host/listings` | List your places / add one (starts paused) |
+| GET / PATCH | `/api/host/listings/:id` | One place with photos / edit details, `status: active \| paused` (publishing needs a photo) |
+| POST | `/api/host/listings/:id/photos` | Raw image body (JPEG, PNG or WebP, max 5 MB) with the `X-Kundar-Upload: 1` header |
+| POST | `/api/host/listings/:id/photos/:photoId/cover` | Make a photo the cover |
+| DELETE | `/api/host/listings/:id/photos/:photoId` | Remove a photo |
+| GET | `/api/host/listings/:id/calendar?from=&to=` | Guest holds and blocks in a range |
+| POST | `/api/host/listings/:id/blocks` | `{ checkIn, checkOut }` → **201**, or **409** if a night is already held or blocked |
+| DELETE | `/api/host/blocks/:id` | Unblock |
 
 Errors look like `{ "error": { "code": "bad_request", "message": "checkout must be after checkin" } }`.
 
@@ -114,19 +149,21 @@ Errors look like `{ "error": { "code": "bad_request", "message": "checkout must 
 - Sessions use a random token in an `HttpOnly`, `SameSite=Lax` cookie. Only the token's SHA-256 hash is stored, so a copy of the `sessions` table can't be used to log in.
 - A failed login gives the same answer and takes about the same time whether or not the email exists.
 - `POST`, `PUT` and `PATCH` requests must be `application/json`, and CORS only allows the site's own origin. Together with SameSite cookies, this stops other sites from forging requests (CSRF).
+- Photo uploads are checked by their first bytes (not just the declared type), saved under random file names, and served with `X-Content-Type-Options: nosniff`. They need a custom header, which forces a CORS preflight, so other sites can't upload.
 - When the site and API are on different domains in production, set `COOKIE_SAMESITE=none` and `COOKIE_SECURE=true`.
 
 ## Demo limitations
 
 - **Payments are unavailable.** There is no payment provider. Guests can hold dates for 15 minutes; pressing "Continue to payment" shows "Payment is unavailable — this is a demo project." Holds then expire on their own, or the guest releases them, and the nights free up again. Bookings never become confirmed. The payment step sits behind `PAYMENTS_ENABLED=false`, so a provider such as Paystack can be added later.
 - Listings, the host and the reviews are fictional demo content.
+- Uploaded photos are stored on the API server's disk (`api/uploads/`), and aren't resized. A real deployment would put them on object storage or a CDN.
 
 ## Roadmap
 
 1. ~~API, MySQL schema and seed; site reads listings and availability from the API~~ ✓
 2. ~~Accounts (secure cookies), 15-minute holds, and a concurrency test (20 simultaneous requests → exactly 1 succeeds)~~ ✓
 3. ~~Site: log-in, holding dates and the "Payment unavailable" step~~ ✓
-4. Host dashboard (React): listings and photos, blocking dates, viewing holds
+4. ~~Host dashboard (React): listings and photos, blocking dates, viewing holds~~ ✓
 5. Deploy: Netlify (web), Render (API), hosted MySQL
 
 ## Deploy the front end (Netlify)
@@ -139,7 +176,8 @@ Import the GitHub repo in Netlify, leave the build command empty and set the pub
 web/            front end (index.html, styles.css, app.js, img/)
 api/src/        Express app: app.js, server.js, db.js, routes/, lib/
 api/db/         schema.sql, seed-lib.js (shared with tests) and seed.js
-api/test/       integration tests (node:test)
+api/test/       integration tests (node:test): guests, holds, races, host routes
+dashboard/src/  React host dashboard (App.jsx, pages/, api.js, styles.css)
 ```
 
 ## Photo credits

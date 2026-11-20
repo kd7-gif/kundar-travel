@@ -31,6 +31,12 @@ const API = (() => {
   }
   return v.replace(/\/$/, '');
 })();
+const DASHBOARD = (() => {
+  const v = (document.querySelector('meta[name="kundar-dashboard"]')?.content || '').trim();
+  if (v === 'auto') return ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname) ? 'http://localhost:5190' : '';
+  return v.replace(/\/$/, '');
+})();
+if (DASHBOARD) document.getElementById('navHost').href = DASHBOARD;
 const FALLBACK = [
   { id: 1, name: 'Lekki Pool Terrace', area: 'Lekki Phase 1, Lagos', type: 'Apartments', price: 185000, rating: 4.9, reviews: 142, img: 'stay-1',
     about: 'A bright two-bedroom with its own plunge pool and a deep terrace, tucked into a quiet close off Admiralty Way. The canopy walk at Lekki Conservation Centre and the sand at Elegushi Beach are both a short drive away. In the evening there is suya from the corner spot, a swim under the palms, and the Link Bridge lighting up across the water.' },
@@ -425,7 +431,7 @@ function cardHTML(s) {
     <div class="c-info">
       <div class="c-name">${name}</div>
       <div class="c-area">${PIN}${area}</div>
-      <div class="c-rate"><span class="stars">${STAR.repeat(5)}</span>${s.rating.toFixed(1)}</div>
+      <div class="c-rate">${s.reviews ? `<span class="stars">${STAR.repeat(5)}</span>${s.rating.toFixed(1)}` : 'New on Kundar'}</div>
     </div>
   </article>`;
 }
@@ -551,9 +557,9 @@ function fillDetail(s) {
   $('#dAboutTitle').textContent = `About ${s.name}`;
   $('#dCopy').textContent = s.about;
   $('#bPrice').textContent = naira(s.price);
-  $('#rScore').textContent = s.rating.toFixed(1);
-  $('#rCount').textContent = `(${s.reviews} reviews)`;
-  $('#rStars').innerHTML = STAR.repeat(5);
+  $('#rScore').textContent = s.reviews ? s.rating.toFixed(1) : 'New';
+  $('#rCount').textContent = s.reviews ? `(${s.reviews} reviews)` : 'No reviews yet';
+  $('#rStars').innerHTML = s.reviews ? STAR.repeat(5) : '';
   $('#dHeart').innerHTML = HEART;
   $('#dHeart').classList.toggle('on', liked.has(s.id));
   dLo.src = s.img700; dLo.alt = s.name;

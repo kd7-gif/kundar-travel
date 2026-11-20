@@ -4,6 +4,7 @@ import { requireAuth } from '../auth.js';
 import { badRequest, notFound, HttpError } from '../lib/errors.js';
 import { isIsoDate, nightsCount, todayLagos } from '../lib/dates.js';
 import { insertBookingWithNights } from '../lib/nights.js';
+import { mediaUrl } from '../lib/media.js';
 import { sweepExpiredHolds, HOLD_MINUTES, MAX_ACTIVE_HOLDS, PAYMENT_UNAVAILABLE } from '../lib/holds.js';
 
 const MAX_NIGHTS = 60;
@@ -22,7 +23,7 @@ const BOOKING_SELECT = `
 function serialize(r) {
   return {
     id: r.id,
-    listing: { id: r.listing_id, name: r.listing_name, area: r.listing_area, image: r.listing_image },
+    listing: { id: r.listing_id, name: r.listing_name, area: r.listing_area, image: mediaUrl(r.listing_image) },
     checkIn: r.check_in,
     checkOut: r.check_out,
     nights: nightsCount(r.check_in, r.check_out),

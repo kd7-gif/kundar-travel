@@ -3,6 +3,10 @@
 import { readFile } from 'node:fs/promises';
 import mysql from 'mysql2/promise';
 import { insertBookingWithNights } from '../src/lib/nights.js';
+import { hashPassword } from '../src/lib/password.js';
+
+// Public demo login for the host dashboard (shown in the README). Override with SEED_HOST_PASSWORD.
+export const DEMO_HOST = { email: 'adaeze@host.kundar.test', password: process.env.SEED_HOST_PASSWORD || 'kundar-host-demo' };
 
 export const defaultConfig = () => ({
   host: process.env.DB_HOST || '127.0.0.1',
@@ -67,8 +71,8 @@ export async function seed(cfg = defaultConfig(), { quiet = false } = {}) {
     await conn.query(await readFile(new URL('./schema.sql', import.meta.url), 'utf8'));
     await conn.beginTransaction();
 
-    const [h] = await conn.query('INSERT INTO users (name, email, role, avatar_url) VALUES (?, ?, ?, ?)',
-      [HOST.name, HOST.email, HOST.role, HOST.avatar]);
+    const [h] = await conn.query('INSERT INTO users (name, email, password_hash, role, avatar_url) VALUES (?, ?, ?, ?, ?)',
+      [HOST.name, HOST.email, await hashPassword(DEMO_HOST.password), HOST.role, HOST.avatar]);
     const hostId = h.insertId;
     const reviewerIds = [];
     for (const r of REVIEWERS) {
