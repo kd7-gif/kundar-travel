@@ -5,8 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kundar Travel — Places to stay in Lagos, Abuja, Ibadan &amp; Port Harcourt</title>
 <meta name="description" content="Book apartments, villas and family homes in Lagos, Abuja, Ibadan and Port Harcourt with Kundar Travel.">
-<!-- Base URL of the Kundar Travel API. Leave empty to use the built-in demo listings only. -->
-<meta name="kundar-api" content="http://localhost:4000">
+<!-- Base URL of the Kundar Travel API, e.g. https://kundar-api.onrender.com
+     "auto" = same hostname on port 4000 when running locally; empty = built-in demo listings only. -->
+<meta name="kundar-api" content="auto">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Gilda+Display&family=Urbanist:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -36,10 +37,19 @@
     <button class="nav-globe" type="button" aria-label="Language">
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 3.8 5.6 3.8 9s-1.2 6.4-3.8 9c-2.6-2.6-3.8-5.6-3.8-9S9.4 5.6 12 3z"/></svg>
     </button>
-    <button class="nav-pill" type="button" aria-label="Account menu">
-      <svg viewBox="0 0 20 14" width="17" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 1.5h18M1 7h18M1 12.5h18"/></svg>
-      <span class="nav-user"><svg viewBox="0 0 22 22" width="22" height="22"><circle cx="11" cy="8.4" r="3.6" fill="currentColor"/><path d="M4.6 18.2c1.2-3 3.6-4.6 6.4-4.6s5.2 1.6 6.4 4.6" fill="currentColor"/></svg></span>
-    </button>
+    <div class="acct-wrap">
+      <button class="nav-pill" id="navPill" type="button" aria-label="Account menu" aria-haspopup="menu" aria-expanded="false">
+        <svg viewBox="0 0 20 14" width="17" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 1.5h18M1 7h18M1 12.5h18"/></svg>
+        <span class="nav-user" id="navUser"><svg viewBox="0 0 22 22" width="22" height="22"><circle cx="11" cy="8.4" r="3.6" fill="currentColor"/><path d="M4.6 18.2c1.2-3 3.6-4.6 6.4-4.6s5.2 1.6 6.4 4.6" fill="currentColor"/></svg></span>
+      </button>
+      <div class="acct" id="acctMenu" role="menu" hidden>
+        <div class="acct-head" id="acctHead" hidden></div>
+        <button type="button" role="menuitem" data-act="login" class="out-only">Log in</button>
+        <button type="button" role="menuitem" data-act="signup" class="out-only">Sign up</button>
+        <button type="button" role="menuitem" data-act="stays" class="in-only">My stays</button>
+        <button type="button" role="menuitem" data-act="logout" class="in-only">Log out</button>
+      </div>
+    </div>
   </div>
 </header>
 
@@ -172,12 +182,24 @@
         <div class="book rise">
           <div class="b-price"><b id="bPrice"></b> /night</div>
           <div class="b-dates">
-            <div><span>Check In</span><b id="bIn"></b></div>
-            <div><span>Check Out</span><b id="bOut"></b></div>
+            <label class="b-date"><span>Check In</span><b id="bIn"></b><input type="date" id="bInInput" aria-label="Check-in date"></label>
+            <label class="b-date"><span>Check Out</span><b id="bOut"></b><input type="date" id="bOutInput" aria-label="Check-out date"></label>
           </div>
           <div class="b-guests"><span>Guests</span><div class="step" id="bStep"><button type="button" data-d="-1" aria-label="Fewer guests">−</button><output id="bGuests">2</output><button type="button" data-d="1" aria-label="More guests">+</button></div></div>
           <div class="b-total"><span id="bCalc"></span><b id="bTotal"></b></div>
+          <p class="b-msg" id="bMsg" role="status" hidden></p>
           <button class="b-btn" id="bBtn" type="button">Book Now</button>
+
+          <div class="b-hold" id="bHold" hidden>
+            <div class="b-hold-top"><span class="b-tag">On hold</span><span class="b-timer" id="bTimer">15:00</span></div>
+            <p class="b-hold-text">These dates are held for you. Nobody else can book them until the timer runs out.</p>
+            <button class="b-btn" id="bPay" type="button">Continue to payment</button>
+            <div class="b-paywall" id="bPaywall" role="alert" hidden>
+              <b id="bPaywallTitle">Payment is unavailable — this is a demo project.</b>
+              <p>No money is taken on Kundar Travel. Your hold ends on its own when the timer runs out, or you can release the dates now.</p>
+            </div>
+            <button class="b-release" id="bRelease" type="button">Release dates</button>
+          </div>
         </div>
 
         <div class="rating rise">
@@ -206,6 +228,36 @@
     </div>
   </div>
 </section>
+
+<!-- ============ LOG IN / SIGN UP ============ -->
+<div class="modal" id="authModal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+    <button class="modal-x" type="button" data-close aria-label="Close">×</button>
+    <h2 id="authTitle">Log in</h2>
+    <p class="modal-sub" id="authSub">Log in to hold dates at a Kundar stay.</p>
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" data-mode="login" class="on">Log in</button>
+      <button type="button" role="tab" data-mode="signup">Sign up</button>
+    </div>
+    <form id="authForm" novalidate>
+      <label class="fld" id="nameRow" hidden>Full name<input name="name" autocomplete="name"></label>
+      <label class="fld">Email<input name="email" type="email" autocomplete="email" required></label>
+      <label class="fld">Password<input name="password" type="password" minlength="8" autocomplete="current-password" required></label>
+      <p class="form-err" id="authErr" role="alert" hidden></p>
+      <button class="b-btn" type="submit" id="authSubmit">Log in</button>
+    </form>
+    <p class="modal-foot">This is a demo — please don't reuse a real password.</p>
+  </div>
+</div>
+
+<!-- ============ MY STAYS ============ -->
+<div class="modal drawer" id="drawer" hidden>
+  <div class="drawer-card" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
+    <div class="drawer-head"><h2 id="drawerTitle">My stays</h2><button class="modal-x" type="button" data-close aria-label="Close">×</button></div>
+    <div class="drawer-list" id="drawerList"></div>
+    <p class="drawer-note">Payment is unavailable in this demo, so each hold lasts 15 minutes and the dates are then released.</p>
+  </div>
+</div>
 
 <script src="app.js"></script>
 </body>

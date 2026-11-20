@@ -10,7 +10,11 @@ A stays-booking site for places in **Lagos, Abuja, Ibadan and Port Harcourt**, b
 - Three-slide hero with a misty right-to-left wipe, giant frosted titles and drifting clouds (generated in code on a canvas and screen-blended)
 - Round destination thumbnails on concentric rings, with an animated caption
 - Search bar with a date-range calendar, a guest picker and a city picker; searching asks the API which stays are free
-- Card → detail page shared-element flight, with a booking card (dates carried over from the search, guest stepper capped at the listing's size, nightly total)
+- Card → detail page shared-element flight, with a booking card: dates carried over from the search (and changeable), a guest stepper capped at the listing's size, a nightly total, and nights that are already taken flagged straight away
+- Log in / sign up dialog and an account menu (initials in the nav once you're signed in)
+- **Book Now places a real 15-minute hold** with a live countdown. "Continue to payment" shows *"Payment is unavailable — this is a demo project."*, and you can release the dates or let the hold run out
+- If someone else takes the dates first, the card says so and asks for different dates
+- "My stays" drawer listing your holds with live countdowns, plus released and expired ones
 - Fully responsive with no horizontal scroll; a custom cursor on desktop (add `?rec` to the URL for a larger cursor when screen-recording)
 - If the API can't be reached, the site falls back to built-in listings, so the static site still works on its own
 
@@ -69,7 +73,7 @@ npm run dev                 # http://localhost:4000
 python3 -m http.server 5180 --directory web
 ```
 
-Then open http://localhost:5180. The API URL comes from `<meta name="kundar-api">` in `web/index.html`.
+Then open http://localhost:5180. The API URL comes from `<meta name="kundar-api">` in `web/index.html`: `auto` uses the same hostname on port 4000 when running locally (so the login cookie counts as same-site); in production, put the API's full URL there.
 
 **4. Run the tests** (optional). They use a separate `kundar_test` database, rebuilt on every run:
 
@@ -114,14 +118,14 @@ Errors look like `{ "error": { "code": "bad_request", "message": "checkout must 
 
 ## Demo limitations
 
-- **Payments are unavailable.** There is no payment provider. Guests can hold dates for 15 minutes; asking to pay returns "Payment is unavailable — this is a demo project." Holds then expire on their own, or the guest releases them, and the nights free up again. Bookings never become confirmed. The payment step sits behind `PAYMENTS_ENABLED=false`, so a provider such as Paystack can be added later.
+- **Payments are unavailable.** There is no payment provider. Guests can hold dates for 15 minutes; pressing "Continue to payment" shows "Payment is unavailable — this is a demo project." Holds then expire on their own, or the guest releases them, and the nights free up again. Bookings never become confirmed. The payment step sits behind `PAYMENTS_ENABLED=false`, so a provider such as Paystack can be added later.
 - Listings, the host and the reviews are fictional demo content.
 
 ## Roadmap
 
 1. ~~API, MySQL schema and seed; site reads listings and availability from the API~~ ✓
 2. ~~Accounts (secure cookies), 15-minute holds, and a concurrency test (20 simultaneous requests → exactly 1 succeeds)~~ ✓
-3. Site: log-in, holding dates and the "Payment unavailable" step
+3. ~~Site: log-in, holding dates and the "Payment unavailable" step~~ ✓
 4. Host dashboard (React): listings and photos, blocking dates, viewing holds
 5. Deploy: Netlify (web), Render (API), hosted MySQL
 

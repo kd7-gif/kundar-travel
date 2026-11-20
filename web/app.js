@@ -9,6 +9,7 @@ const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const easeIO = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 const naira = n => '₦' + n.toLocaleString('en-NG');
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const root = document.documentElement;
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -20,7 +21,16 @@ root.classList.add('intro');
    Listings come from the API (see api/). FALLBACK is used only when the
    API can't be reached, so the static site still works on its own.
    --------------------------------------------------------- */
-const API = (document.querySelector('meta[name="kundar-api"]')?.content || '').replace(/\/$/, '');
+// <meta name="kundar-api"> holds the API's base URL. "auto" means: on a local machine use
+// the same hostname on port 4000 (so the session cookie counts as same-site), otherwise none.
+const API = (() => {
+  const v = (document.querySelector('meta[name="kundar-api"]')?.content || '').trim();
+  if (v === 'auto') {
+    const local = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+    return local ? `${location.protocol}//${location.hostname}:4000` : '';
+  }
+  return v.replace(/\/$/, '');
+})();
 const FALLBACK = [
   { id: 1, name: 'Lekki Pool Terrace', area: 'Lekki Phase 1, Lagos', type: 'Apartments', price: 185000, rating: 4.9, reviews: 142, img: 'stay-1',
     about: 'A bright two-bedroom with its own plunge pool and a deep terrace, tucked into a quiet close off Admiralty Way. The canopy walk at Lekki Conservation Centre and the sand at Elegushi Beach are both a short drive away. In the evening there is suya from the corner spot, a swim under the palms, and the Link Bridge lighting up across the water.' },
@@ -50,11 +60,19 @@ const fromApi = l => ({ id: l.id, name: l.name, area: l.area, city: l.city, type
 let ALL = FALLBACK.map(fromFallback);   // every listing (for detail + similar)
 let apiOnline = false;
 
-async function api(path) {
-  const res = await fetch(API + path, { headers: { Accept: 'application/json' } });
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw Object.assign(new Error(body.error?.message || `HTTP ${res.status}`), { status: res.status });
-  return body;
+async function api(path, { method = 'GET', body } = {}) {
+  if (!API) throw Object.assign(new Error('No API configured'), { status: 0 });
+  const res = await fetch(API + path, {
+    method,
+    credentials: 'include',              // send the session cookie
+    headers: { Accept: 'application/json', ...(body !== undefined && { 'Content-Type': 'application/json' }) },
+    body: body !== undefined ? JSON.stringify(body) : undefined
+  });
+  const data = res.status === 204 ? {} : await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw Object.assign(new Error(data.error?.message || `HTTP ${res.status}`), { status: res.status, code: data.error?.code });
+  }
+  return data;
 }
 
 const SLIDES = [
@@ -120,7 +138,7 @@ makeClouds();
    --------------------------------------------------------- */
 const cursor = $('#cursor');
 if (matchMedia('(pointer:fine)').matches) {
-  const HOV = 'a,button,.card,.thumb,.field,.d-th,[data-hover]';
+  const HOV = 'a,button,label,input,.card,.thumb,.field,.d-th,[data-hover]';
   addEventListener('pointermove', e => {
     cursor.style.transform = `translate(${e.clientX}px,${e.clientY}px)`;
     cursor.classList.add('show');
@@ -376,7 +394,14 @@ function renderGuests() {
 renderGuests();
 
 document.addEventListener('click', e => { if (!e.target.closest('#search')) closePops(); });
-addEventListener('keydown', e => { if (e.key === 'Escape') { closePops(); if (detailOpen) closeStay(); } });
+addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  const modal = $('.modal.open');
+  if (modal) return closeModal(modal);
+  if (!$('#acctMenu').hidden) return toggleMenu(false);
+  closePops();
+  if (detailOpen) closeStay();
+});
 
 $('#send').addEventListener('click', e => {
   e.stopPropagation(); closePops();
@@ -392,13 +417,14 @@ const HEART = '<svg viewBox="0 0 24 24"><path d="M12 20.5s-8-4.9-8-11A4.6 4.6 0 
 const PIN = '<svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 14.5s5-4.6 5-8.3A5 5 0 0 0 3 6.2c0 3.7 5 8.3 5 8.3z"/><circle cx="8" cy="6.2" r="1.8"/></svg>';
 
 function cardHTML(s) {
-  return `<article class="card" data-id="${s.id}" tabindex="0" aria-label="${s.name}, ${s.area}">
-    <img src="${s.img700}" alt="${s.name}, ${s.area}" loading="lazy">
+  const name = esc(s.name), area = esc(s.area);
+  return `<article class="card" data-id="${s.id}" tabindex="0" aria-label="${name}, ${area}">
+    <img src="${esc(s.img700)}" alt="${name}, ${area}" loading="lazy">
     <div class="price">${naira(s.price)}<small>/night</small></div>
-    <button class="heart ${liked.has(s.id) ? 'on' : ''}" type="button" aria-label="Save ${s.name}">${HEART}</button>
+    <button class="heart ${liked.has(s.id) ? 'on' : ''}" type="button" aria-label="Save ${name}">${HEART}</button>
     <div class="c-info">
-      <div class="c-name">${s.name}</div>
-      <div class="c-area">${PIN}${s.area}</div>
+      <div class="c-name">${name}</div>
+      <div class="c-area">${PIN}${area}</div>
       <div class="c-rate"><span class="stars">${STAR.repeat(5)}</span>${s.rating.toFixed(1)}</div>
     </div>
   </article>`;
@@ -431,6 +457,12 @@ async function loadListings() {
     ALL = data.listings.map(fromApi);
     apiOnline = true;
     renderGrid($('#grid'), ALL);
+    // a stay opened from the URL before the API answered: swap in live data
+    if (detailOpen && currentStay) {
+      currentStay = ALL.find(x => x.id === currentStay.id) || currentStay;
+      loadUnavailable(currentStay);
+    }
+    initSession();
   } catch (err) {
     console.info('[Kundar] API unavailable, showing built-in listings:', err.message);
   }
@@ -443,10 +475,9 @@ function showAll() {
 }
 
 async function runSearch() {
-  const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const guests = state.adults + state.children;
   const q = new URLSearchParams({ city: state.city });
-  if (state.cin && state.cout) { q.set('checkin', iso(state.cin)); q.set('checkout', iso(state.cout)); }
+  if (state.cin && state.cout) { q.set('checkin', toIso(state.cin)); q.set('checkout', toIso(state.cout)); }
   if (guests) q.set('guests', guests);
 
   let results;
@@ -499,7 +530,17 @@ document.addEventListener('keydown', e => {
    --------------------------------------------------------- */
 const detail = $('#detail'), dMain = $('#dMain'), dLo = $('#dMainLo'), dHi = $('#dMainHi');
 let detailOpen = false, currentStay = null, bGuests = 2;
-const DEFAULT_IN = new Date(2026, 11, 22), DEFAULT_OUT = new Date(2026, 11, 27);
+const toIso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const fromIso = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const addD = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const mmss = ms => { const t = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
+function defaultDates() {
+  let cin = new Date(2026, 11, 22), cout = new Date(2026, 11, 27);
+  if (cin < today) { cin = addD(today, 14); cout = addD(cin, 5); }
+  return { cin, cout };
+}
+// booking-card state: chosen dates, nights already taken, and the live hold (if any)
+const bk = { cin: null, cout: null, unavailable: new Set(), hold: null, timer: null };
 const longFmt = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
 function fillDetail(s) {
@@ -521,8 +562,7 @@ function fillDetail(s) {
   dHi.src = s.img1400; dHi.alt = s.name;
   const total = state.adults + state.children;
   bGuests = clamp(total || 2, 1, s.maxGuests);
-  const btn = $('#bBtn'); btn.textContent = 'Book Now'; btn.classList.remove('done');
-  renderBooking();
+  resetBookingCard(s);
   // similar: same city first, then the rest
   const others = ALL.filter(x => x.id !== s.id);
   const sim = [...others.filter(x => x.city === s.city), ...others.filter(x => x.city !== s.city)].slice(0, 4);
@@ -531,27 +571,182 @@ function fillDetail(s) {
 
 function renderBooking() {
   const s = currentStay;
-  const cin = state.cin || DEFAULT_IN;
-  const cout = state.cout || (state.cin ? new Date(state.cin.getTime() + 5 * 864e5) : DEFAULT_OUT);
-  const nights = Math.max(1, Math.round((cout - cin) / 864e5));
-  $('#bIn').textContent = longFmt(cin);
-  $('#bOut').textContent = longFmt(cout);
+  const nights = Math.max(1, Math.round((bk.cout - bk.cin) / 864e5));
+  $('#bIn').textContent = longFmt(bk.cin);
+  $('#bOut').textContent = longFmt(bk.cout);
+  const inI = $('#bInInput'), outI = $('#bOutInput');
+  inI.value = toIso(bk.cin); inI.min = toIso(today);
+  outI.value = toIso(bk.cout); outI.min = toIso(addD(bk.cin, 1)); outI.max = toIso(addD(bk.cin, 60));
   $('#bGuests').textContent = bGuests;
-  $('#bStep [data-d="-1"]').disabled = bGuests <= 1;
-  $('#bStep [data-d="1"]').disabled = bGuests >= s.maxGuests;
+  $('#bStep [data-d="-1"]').disabled = !!bk.hold || bGuests <= 1;
+  $('#bStep [data-d="1"]').disabled = !!bk.hold || bGuests >= s.maxGuests;
   $('#bCalc').textContent = `${naira(s.price)} × ${nights} night${nights > 1 ? 's' : ''}`;
   $('#bTotal').textContent = naira(s.price * nights);
+  if (!bk.hold) checkAvailability();
+}
+
+function setMsg(text, ok = false) {
+  const m = $('#bMsg');
+  m.textContent = text || '';
+  m.hidden = !text;
+  m.classList.toggle('ok', ok);
+}
+
+function rangeTaken() {
+  for (let d = bk.cin; d < bk.cout; d = addD(d, 1)) if (bk.unavailable.has(toIso(d))) return true;
+  return false;
+}
+function checkAvailability() {
+  const taken = rangeTaken();
+  $('#bBtn').disabled = taken;
+  if (taken) setMsg('Not available on those dates — try different ones.');
+  else if ($('#bMsg').textContent.startsWith('Not available')) setMsg('');
+}
+
+async function loadUnavailable(s) {
+  if (!apiOnline) return;
+  try {
+    const r = await api(`/api/listings/${s.id}/unavailable?from=${toIso(today)}&to=${toIso(addD(today, 366))}`);
+    if (currentStay !== s) return;
+    bk.unavailable = new Set(r.nights);
+    if (!bk.hold) checkAvailability();
+  } catch { /* calendar hints are optional */ }
+}
+
+function resetBookingCard(s) {
+  stopTimer();
+  bk.hold = null;
+  const d = state.cin && state.cout ? { cin: state.cin, cout: state.cout } : defaultDates();
+  bk.cin = d.cin; bk.cout = d.cout;
+  bk.unavailable = new Set();
+  $('.book').classList.remove('is-held');
+  $('#bBtn').hidden = false;
+  $('#bHold').hidden = true;
+  setMsg('');
+  renderBooking();
+  loadUnavailable(s);
+  restoreHold(s);
 }
 
 $('#bStep').addEventListener('click', e => {
-  const b = e.target.closest('button'); if (!b) return;
+  const b = e.target.closest('button'); if (!b || bk.hold) return;
   bGuests = clamp(bGuests + +b.dataset.d, 1, currentStay.maxGuests);
   renderBooking();
 });
-$('#bBtn').addEventListener('click', e => {
-  e.currentTarget.textContent = 'Booked ✓';
-  e.currentTarget.classList.add('done');
+
+// the date boxes are native date inputs laid over the labels
+['#bInInput', '#bOutInput'].forEach(sel => $(sel).addEventListener('click', e => { try { e.target.showPicker(); } catch {} }));
+$('#bInInput').addEventListener('change', e => {
+  if (!e.target.value) return renderBooking();
+  const d = fromIso(e.target.value);
+  if (d < today) return renderBooking();
+  const nights = Math.round((bk.cout - bk.cin) / 864e5);
+  bk.cin = d;
+  if (bk.cout <= d || Math.round((bk.cout - d) / 864e5) > 60) bk.cout = addD(d, clamp(nights, 1, 60));
+  renderBooking();
 });
+$('#bOutInput').addEventListener('change', e => {
+  if (!e.target.value) return renderBooking();
+  const d = fromIso(e.target.value);
+  if (d > bk.cin && Math.round((d - bk.cin) / 864e5) <= 60) bk.cout = d;
+  renderBooking();
+});
+
+$('#bBtn').addEventListener('click', () => {
+  if (!apiOnline) return setMsg('Booking is offline right now — the Kundar API isn’t reachable.');
+  if (!currentUser) return openAuth('login', 'Log in to hold these dates.', placeHold);
+  placeHold();
+});
+
+async function placeHold() {
+  const s = currentStay, btn = $('#bBtn');
+  btn.classList.add('busy'); btn.textContent = 'Holding your dates…'; setMsg('');
+  try {
+    const { booking } = await api('/api/bookings', {
+      method: 'POST',
+      body: { listingId: s.id, checkIn: toIso(bk.cin), checkOut: toIso(bk.cout), guests: bGuests }
+    });
+    upsertMine(booking);
+    if (currentStay === s) showHold(booking);
+  } catch (err) {
+    if (err.status === 401) { setUser(null); return openAuth('login', 'Your session ended. Log in to hold these dates.', placeHold); }
+    if (err.code === 'dates_unavailable') loadUnavailable(s);
+    setMsg(err.message);
+  } finally {
+    btn.classList.remove('busy'); btn.textContent = 'Book Now';
+  }
+}
+
+function showHold(b) {
+  bk.hold = b;
+  bk.cin = fromIso(b.checkIn); bk.cout = fromIso(b.checkOut); bGuests = b.guests;
+  $('.book').classList.add('is-held');
+  $('#bBtn').hidden = true;
+  $('#bHold').hidden = false;
+  $('#bPaywall').hidden = true;
+  $('#bPay').hidden = false;
+  setMsg('');
+  renderBooking();
+  startTimer();
+}
+
+function startTimer() {
+  stopTimer();
+  const tick = () => {
+    const left = new Date(bk.hold.holdExpiresAt) - Date.now();
+    if (left <= 0) { markMine(bk.hold.id, 'expired'); return endHold('Your hold ran out, so the dates were released.'); }
+    $('#bTimer').textContent = mmss(left);
+  };
+  tick();
+  bk.timer = setInterval(tick, 1000);
+}
+function stopTimer() { clearInterval(bk.timer); bk.timer = null; }
+
+function endHold(msg, ok) {
+  stopTimer();
+  bk.hold = null;
+  $('.book').classList.remove('is-held');
+  $('#bHold').hidden = true;
+  $('#bBtn').hidden = false;
+  renderBooking();
+  loadUnavailable(currentStay);
+  setMsg(msg, ok);
+}
+
+$('#bPay').addEventListener('click', async e => {
+  const btn = e.currentTarget;
+  if (!bk.hold) return;
+  btn.classList.add('busy'); btn.textContent = 'Opening payment…';
+  try {
+    await api(`/api/bookings/${bk.hold.id}/pay`, { method: 'POST', body: {} });
+  } catch (err) {
+    if (err.code === 'payments_unavailable') {
+      $('#bPaywallTitle').textContent = err.message;
+      $('#bPaywall').hidden = false;
+      btn.hidden = true;
+    } else if (err.code === 'not_found' || err.status === 401) {
+      endHold('This hold is no longer active.');
+    } else setMsg(err.message);
+  } finally {
+    btn.classList.remove('busy'); btn.textContent = 'Continue to payment';
+  }
+});
+
+$('#bRelease').addEventListener('click', async e => {
+  const id = bk.hold?.id, btn = e.currentTarget; if (!id) return;
+  btn.classList.add('busy');
+  try {
+    const { booking } = await api(`/api/bookings/${id}`, { method: 'DELETE' });
+    upsertMine(booking);
+    endHold('Dates released — they’re free for anyone to book again.', true);
+  } catch (err) {
+    if (err.code === 'not_held') { markMine(id, 'expired'); endHold('This hold had already ended.'); }
+    else setMsg(err.message);
+  } finally {
+    btn.classList.remove('busy');
+  }
+});
+
 $('#dHeart').addEventListener('click', e => { if (currentStay) toggleLike(currentStay.id, e.currentTarget); });
 
 function openStay(id, cardEl, instant) {
@@ -599,6 +794,7 @@ function openStay(id, cardEl, instant) {
 function closeStay(fromPop) {
   if (!detailOpen) return;
   detailOpen = false;
+  stopTimer();
   detail.classList.remove('open', 'shown');
   detail.setAttribute('aria-hidden', 'true');
   root.classList.remove('lock');
@@ -621,6 +817,183 @@ $('#crumbHome').addEventListener('click', e => { e.preventDefault(); closeStay()
 $$('.nav-links a, .see-all').forEach(a => a.addEventListener('click', e => {
   if (detailOpen) { e.preventDefault(); closeStay(); setTimeout(() => $(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth' }), 400); }
 }));
+
+/* ---------------------------------------------------------
+   ACCOUNT: session, log-in dialog, account menu, "My stays"
+   --------------------------------------------------------- */
+let currentUser = null, myBookings = [];
+const acctMenu = $('#acctMenu'), navPill = $('#navPill'), navUser = $('#navUser');
+const USER_ICON = navUser.innerHTML;
+const initials = n => n.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('');
+const fmtIso = s => fmt(fromIso(s));
+const isLive = b => b.status === 'held' && new Date(b.holdExpiresAt) > Date.now();
+
+function setUser(u) {
+  currentUser = u;
+  acctMenu.classList.toggle('signed-in', !!u);
+  const head = $('#acctHead');
+  head.hidden = !u;
+  head.innerHTML = u ? `<b>${esc(u.name)}</b>${esc(u.email)}` : '';
+  if (u) { navUser.textContent = initials(u.name); navUser.classList.add('initials'); }
+  else { navUser.innerHTML = USER_ICON; navUser.classList.remove('initials'); myBookings = []; }
+  navPill.setAttribute('aria-label', u ? `Account menu for ${u.name}` : 'Account menu');
+}
+
+async function initSession() {
+  try {
+    const { user } = await api('/api/auth/me');
+    setUser(user);
+    await loadMine();
+    if (detailOpen && currentStay && !bk.hold) restoreHold(currentStay);
+  } catch { /* stay logged out */ }
+}
+
+async function loadMine() {
+  if (!currentUser) return;
+  try { myBookings = (await api('/api/bookings/mine')).bookings; } catch { /* keep what we had */ }
+}
+function upsertMine(b) {
+  const i = myBookings.findIndex(x => x.id === b.id);
+  if (i >= 0) myBookings[i] = b; else myBookings.unshift(b);
+}
+function markMine(id, status) {
+  const b = myBookings.find(x => x.id === id);
+  if (b) b.status = status;
+}
+function restoreHold(s) {
+  const h = myBookings.find(b => b.listing.id === s.id && isLive(b));
+  if (h) showHold(h);
+}
+
+// menu
+function toggleMenu(open) {
+  acctMenu.hidden = !open;
+  navPill.setAttribute('aria-expanded', String(open));
+}
+navPill.addEventListener('click', e => { e.stopPropagation(); toggleMenu(acctMenu.hidden); });
+document.addEventListener('click', e => { if (!e.target.closest('.acct-wrap')) toggleMenu(false); });
+acctMenu.addEventListener('click', async e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  toggleMenu(false);
+  const act = b.dataset.act;
+  if (act === 'login' || act === 'signup') openAuth(act);
+  else if (act === 'stays') openDrawer();
+  else if (act === 'logout') {
+    try { await api('/api/auth/logout', { method: 'POST', body: {} }); } catch { /* clear locally anyway */ }
+    setUser(null);
+    if (detailOpen && currentStay && bk.hold) endHold('');
+  }
+});
+
+// modals
+let lastFocus = null;
+function openModal(m) {
+  lastFocus = document.activeElement;
+  m.hidden = false;
+  requestAnimationFrame(() => m.classList.add('open'));
+}
+function closeModal(m) {
+  m.classList.remove('open');
+  setTimeout(() => { if (!m.classList.contains('open')) m.hidden = true; }, 260);
+  if (m.id === 'drawer') clearInterval(drawerTimer);
+  if (m.id === 'authModal') afterAuth = null;
+  lastFocus?.focus?.({ preventScroll: true });
+}
+$$('.modal').forEach(m => m.addEventListener('click', e => {
+  if (e.target === m || e.target.closest('[data-close]')) closeModal(m);
+}));
+
+// log in / sign up
+let authMode = 'login', afterAuth = null;
+function setAuthMode(mode) {
+  authMode = mode;
+  $$('#authModal .tabs button').forEach(b => b.classList.toggle('on', b.dataset.mode === mode));
+  $('#nameRow').hidden = mode !== 'signup';
+  $('#authTitle').textContent = mode === 'signup' ? 'Create your account' : 'Welcome back';
+  $('#authSubmit').textContent = mode === 'signup' ? 'Sign up' : 'Log in';
+  $('#authForm [name=password]').autocomplete = mode === 'signup' ? 'new-password' : 'current-password';
+}
+function openAuth(mode = 'login', sub, then) {
+  setAuthMode(mode);
+  $('#authSub').textContent = sub || (mode === 'signup' ? 'Create an account to hold dates at a Kundar stay.' : 'Log in to hold dates at a Kundar stay.');
+  $('#authErr').hidden = true;
+  openModal($('#authModal'));
+  afterAuth = then || null;
+  setTimeout(() => $(`#authForm [name=${mode === 'signup' ? 'name' : 'email'}]`).focus(), 80);
+}
+$$('#authModal .tabs button').forEach(b => b.addEventListener('click', () => { setAuthMode(b.dataset.mode); $('#authErr').hidden = true; }));
+$('#authForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const form = e.currentTarget, btn = $('#authSubmit'), errEl = $('#authErr');
+  const showErr = t => { errEl.textContent = t; errEl.hidden = false; };
+  const data = Object.fromEntries(new FormData(form));
+  if (authMode !== 'signup') delete data.name;
+  if (authMode === 'signup' && (data.name || '').trim().length < 2) return showErr('Enter your full name');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email || '')) return showErr('Enter a valid email address');
+  if ((data.password || '').length < 8) return showErr('Password must be at least 8 characters');
+  if (!apiOnline) return showErr('Accounts are offline right now — the Kundar API isn’t reachable.');
+  btn.classList.add('busy');
+  try {
+    const { user } = await api(`/api/auth/${authMode}`, { method: 'POST', body: data });
+    setUser(user);
+    await loadMine();
+    form.reset();
+    const next = afterAuth;
+    closeModal($('#authModal'));
+    if (detailOpen && currentStay && !bk.hold) restoreHold(currentStay);
+    if (next && !bk.hold) next();
+  } catch (err) {
+    showErr(err.message);
+  } finally {
+    btn.classList.remove('busy');
+  }
+});
+
+// My stays drawer
+let drawerTimer = null;
+async function openDrawer() {
+  openModal($('#drawer'));
+  renderDrawer();
+  await loadMine();
+  renderDrawer();
+  clearInterval(drawerTimer);
+  drawerTimer = setInterval(() => {
+    let changed = false;
+    $$('#drawerList .chip.held').forEach(c => {
+      const left = new Date(c.dataset.exp) - Date.now();
+      if (left <= 0) { markMine(+c.dataset.id, 'expired'); changed = true; }
+      else c.textContent = `On hold · ${mmss(left)}`;
+    });
+    if (changed) renderDrawer();
+  }, 1000);
+}
+function renderDrawer() {
+  const list = $('#drawerList');
+  if (!myBookings.length) {
+    list.innerHTML = '<p class="drawer-empty">No stays yet. Open a place you like and press Book Now to hold your dates.</p>';
+    return;
+  }
+  list.innerHTML = myBookings.map(b => {
+    const chip = isLive(b)
+      ? `<span class="chip held" data-id="${b.id}" data-exp="${esc(b.holdExpiresAt)}">On hold · ${mmss(new Date(b.holdExpiresAt) - Date.now())}</span>`
+      : `<span class="chip">${b.status === 'cancelled' ? 'Released' : 'Expired'}</span>`;
+    return `<article class="trip">
+      <img src="${esc(b.listing.image || '')}" alt="">
+      <div>
+        <h3>${esc(b.listing.name)}</h3>
+        <p>${fmtIso(b.checkIn)} – ${fmtIso(b.checkOut)} · ${b.guests} guest${b.guests > 1 ? 's' : ''} · ${naira(b.total)}</p>
+        <div class="trip-row">${chip}<button class="link" type="button" data-open="${b.listing.id}">View place</button></div>
+      </div>
+    </article>`;
+  }).join('');
+}
+$('#drawerList').addEventListener('click', e => {
+  const b = e.target.closest('[data-open]'); if (!b) return;
+  closeModal($('#drawer'));
+  const id = +b.dataset.open;
+  if (detailOpen) { if (currentStay?.id !== id) { fillDetail(ALL.find(x => x.id === id)); detail.scrollTop = 0; } }
+  else openStay(id, null, true);
+});
 
 /* ---------------------------------------------------------
    INTRO + BOOT
