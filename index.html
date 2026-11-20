@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kundar Travel — Places to stay in Lagos, Abuja, Ibadan &amp; Port Harcourt</title>
+<meta name="description" content="Book apartments, villas and family homes in Lagos, Abuja, Ibadan and Port Harcourt with Kundar Travel.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gilda+Display&family=Urbanist:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="preload" as="image" href="img/slide-lagos.jpg">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="cursor" id="cursor" aria-hidden="true"></div>
+
+<!-- ============ NAV ============ -->
+<header class="nav" id="nav">
+  <div class="nav-left">
+    <a href="#" class="logo" id="logo">Kundar Travel</a>
+    <span class="nav-div"></span>
+    <button class="nav-visitors" type="button">Visitors
+      <svg viewBox="0 0 10 6" width="9" height="6"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </div>
+  <nav class="nav-links">
+    <a href="#stays">Apartments</a>
+    <a href="#stays">Where to go</a>
+    <a href="#footer">Contact Us</a>
+  </nav>
+  <div class="nav-right">
+    <a href="#" class="nav-host">Become a host</a>
+    <button class="nav-globe" type="button" aria-label="Language">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 3.8 5.6 3.8 9s-1.2 6.4-3.8 9c-2.6-2.6-3.8-5.6-3.8-9S9.4 5.6 12 3z"/></svg>
+    </button>
+    <button class="nav-pill" type="button" aria-label="Account menu">
+      <svg viewBox="0 0 20 14" width="17" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 1.5h18M1 7h18M1 12.5h18"/></svg>
+      <span class="nav-user"><svg viewBox="0 0 22 22" width="22" height="22"><circle cx="11" cy="8.4" r="3.6" fill="currentColor"/><path d="M4.6 18.2c1.2-3 3.6-4.6 6.4-4.6s5.2 1.6 6.4 4.6" fill="currentColor"/></svg></span>
+    </button>
+  </div>
+</header>
+
+<!-- ============ HERO ============ -->
+<section class="hero" id="hero">
+  <div class="stage" id="stage">
+    <div class="slides" id="slides">
+      <div class="slide is-live" data-i="0">
+        <div class="ph" style="background-image:url(img/slide-lagos.jpg);background-position:center 62%"></div>
+        <div class="tint"></div>
+        <h1 class="title t-a"><span class="wm"><span class="wi">Welcome</span></span> <span class="wm"><span class="wi">to</span></span> <span class="wm"><span class="wi">Lagos</span></span></h1>
+      </div>
+      <div class="slide" data-i="1">
+        <div class="ph" style="background-image:url(img/slide-stay.jpg);background-position:center 55%"></div>
+        <div class="tint"></div>
+        <h2 class="title t-a"><span class="wm"><span class="wi">Find</span></span> <span class="wm"><span class="wi">place</span></span> <span class="wm"><span class="wi">to</span></span> <span class="wm"><span class="wi">stay</span></span></h2>
+      </div>
+      <div class="slide" data-i="2">
+        <div class="ph" style="background-image:url(img/slide-abuja.jpg);background-position:center 82%"></div>
+        <div class="tint"></div>
+        <h2 class="title t-b"><span class="wm"><span class="wi">Explore</span></span><br><span class="wm"><span class="wi">Abuja</span></span></h2>
+      </div>
+    </div>
+
+    <div class="mist" id="mist"></div>
+    <div class="ctop" id="ctop"><div class="cl"></div></div>
+    <div class="cbank" id="cbank"><div class="cl back"></div><div class="cl front"></div></div>
+    <div class="fade"></div>
+
+    <div class="rail" id="rail">
+      <div class="ring" id="ring1"></div>
+      <div class="ring" id="ring2"></div>
+      <div class="connector" id="connector"></div>
+      <div class="caption" id="caption">
+        <span class="cap-bar"></span>
+        <div class="cap-text">
+          <h3 id="capTitle">Discover Lagos</h3>
+          <p id="capDesc"></p>
+        </div>
+      </div>
+      <button class="thumb" data-slide="2" aria-label="Abuja — Zuma Rock"><span class="thumb-in"><img src="img/thumb-zuma.jpg" alt="Zuma Rock near Abuja"></span></button>
+      <button class="thumb" data-slide="1" aria-label="Places to stay — Elegushi Beach"><span class="thumb-in"><img src="img/thumb-elegushi.jpg" alt="Elegushi Beach coastline, Lagos"></span></button>
+      <button class="thumb" data-slide="0" aria-label="Lagos — Lekki–Ikoyi Link Bridge"><span class="thumb-in"><img src="img/thumb-lekki-bridge.jpg" alt="Lekki–Ikoyi Link Bridge at night"></span></button>
+    </div>
+  </div>
+
+  <!-- search bar lives outside the clipped stage so popovers can overflow -->
+  <form class="search" id="search" autocomplete="off" onsubmit="return false">
+    <button type="button" class="field f-dest" data-field="dest">
+      <svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M8 14.5s5-4.6 5-8.3A5 5 0 0 0 3 6.2c0 3.7 5 8.3 5 8.3z"/><circle cx="8" cy="6.2" r="1.8"/></svg>
+      <span class="f-txt"><span class="f-label" id="destLabel">Lagos</span><span class="f-sub">Choose the destination</span></span>
+    </button>
+    <button type="button" class="field on" data-field="in">
+      <svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="2" y="3" width="12" height="11" rx="2"/><path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3"/></svg>
+      <span class="f-txt"><span class="f-label">Check in</span><span class="f-sub" id="inSub">Add date</span></span>
+    </button>
+    <button type="button" class="field" data-field="out">
+      <svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="2" y="3" width="12" height="11" rx="2"/><path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3"/></svg>
+      <span class="f-txt"><span class="f-label">Check out</span><span class="f-sub" id="outSub">Add date</span></span>
+    </button>
+    <button type="button" class="field" data-field="guests">
+      <svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="6" cy="5" r="2.4"/><path d="M1.5 13.5c.6-2.6 2.3-4 4.5-4s3.9 1.4 4.5 4"/><path d="M10.6 3a2.3 2.3 0 0 1 0 4.4M12.2 9.8c1.2.6 2 1.9 2.3 3.7"/></svg>
+      <span class="f-txt"><span class="f-label">Visitors</span><span class="f-sub" id="guestSub">Add guests</span></span>
+    </button>
+    <button type="button" class="send" id="send" aria-label="Search stays">
+      <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"><path d="M18 2L2 8.6l6.4 2.9L18 2zM18 2l-6.6 16-2.9-6.5"/></svg>
+    </button>
+
+    <div class="pop pop-dest" id="popDest">
+      <button type="button" data-city="Lagos">Lagos<span>Lekki · Ikoyi · Victoria Island</span></button>
+      <button type="button" data-city="Abuja">Abuja<span>Maitama · Wuse II · Asokoro</span></button>
+      <button type="button" data-city="Ibadan">Ibadan<span>Bodija</span></button>
+      <button type="button" data-city="Port Harcourt">Port Harcourt<span>Old GRA</span></button>
+    </div>
+    <div class="pop pop-cal" id="popCal">
+      <div class="cal-head">
+        <button type="button" class="cal-nav" data-dir="-1" aria-label="Previous month">‹</button>
+        <span id="calMonth"></span>
+        <button type="button" class="cal-nav" data-dir="1" aria-label="Next month">›</button>
+      </div>
+      <div class="cal-dow"><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span></div>
+      <div class="cal-grid" id="calGrid"></div>
+    </div>
+    <div class="pop pop-guests" id="popGuests">
+      <div class="g-row"><div><b>Adults</b><span>Ages 13 or above</span></div><div class="step" data-k="adults"><button type="button" data-d="-1" aria-label="Fewer adults">−</button><output>0</output><button type="button" data-d="1" aria-label="More adults">+</button></div></div>
+      <div class="g-row"><div><b>Children</b><span>Ages 2–12</span></div><div class="step" data-k="children"><button type="button" data-d="-1" aria-label="Fewer children">−</button><output>0</output><button type="button" data-d="1" aria-label="More children">+</button></div></div>
+    </div>
+  </form>
+</section>
+
+<!-- ============ STAYS ============ -->
+<main class="stays" id="stays">
+  <div class="sec-head">
+    <h2>Recommended Places to Stay</h2>
+    <a href="#stays" class="see-all">See All</a>
+  </div>
+  <div class="grid" id="grid"></div>
+</main>
+
+<footer class="footer" id="footer">
+  <div><span class="f-logo">Kundar Travel</span> · Lagos &amp; Abuja · Stays across Lagos, Abuja, Ibadan and Port Harcourt</div>
+  <div class="credits">Photos from Pexels contributors, and “Lekki link bridge at night” by Olasunkanmiariyo via <a href="https://commons.wikimedia.org/wiki/File:Lekki_link_bridge_at_night.jpg" target="_blank" rel="noopener">Wikimedia Commons</a>, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a>.</div>
+</footer>
+
+<!-- ============ DETAIL ============ -->
+<section class="detail" id="detail" aria-hidden="true">
+  <div class="d-band"></div>
+  <div class="d-wrap">
+    <div class="crumbs rise"><a href="#" id="crumbHome">Home</a> › <span>Type of places to stay</span> › <span id="crumbType">Apartments</span> › <span class="last" id="crumbName"></span></div>
+    <div class="d-cols">
+      <div class="d-left">
+        <div class="d-main" id="dMain">
+          <img class="lo" id="dMainLo" alt="">
+          <img class="hi" id="dMainHi" alt="">
+          <button class="heart" id="dHeart" type="button" aria-label="Save"></button>
+        </div>
+        <div class="d-thumbs rise">
+          <div class="d-th"><img src="img/interior-1.jpg" alt="Living room and kitchen"></div>
+          <div class="d-th"><img src="img/interior-2.jpg" alt="Bedroom"></div>
+          <div class="d-th more"><img src="img/interior-3.jpg" alt="Lounge"><span>+9</span></div>
+        </div>
+      </div>
+      <div class="d-right">
+        <h1 class="d-name rise" id="dName"></h1>
+        <div class="host rise">Hosted by <img src="img/avatar-1.jpg" alt=""> <b>Adaeze Okafor</b></div>
+        <h2 class="d-about rise" id="dAboutTitle"></h2>
+        <p class="d-copy rise" id="dCopy"></p>
+
+        <div class="book rise">
+          <div class="b-price"><b id="bPrice"></b> /night</div>
+          <div class="b-dates">
+            <div><span>Check In</span><b id="bIn"></b></div>
+            <div><span>Check Out</span><b id="bOut"></b></div>
+          </div>
+          <div class="b-guests"><span>Guests</span><div class="step" id="bStep"><button type="button" data-d="-1" aria-label="Fewer guests">−</button><output id="bGuests">2</output><button type="button" data-d="1" aria-label="More guests">+</button></div></div>
+          <div class="b-total"><span id="bCalc"></span><b id="bTotal"></b></div>
+          <button class="b-btn" id="bBtn" type="button">Book Now</button>
+        </div>
+
+        <div class="rating rise">
+          <div class="r-score"><b id="rScore">4.8</b> <span id="rCount">(128 reviews)</span><span class="r-stars" id="rStars"></span></div>
+          <div class="r-avs"><img src="img/avatar-2.jpg" alt=""><img src="img/avatar-3.jpg" alt=""><img src="img/avatar-4.jpg" alt=""></div>
+          <button class="r-btn" type="button">Rate Now</button>
+        </div>
+
+        <div class="amen rise">
+          <h3>Amenities</h3>
+          <ul>
+            <li><svg viewBox="0 0 24 24"><path d="M2.5 9a14 14 0 0 1 19 0M5.5 12.3a9.5 9.5 0 0 1 13 0M8.6 15.5a5 5 0 0 1 6.8 0"/><circle cx="12" cy="18.6" r="1"/></svg>Fast Wi-Fi</li>
+            <li><svg viewBox="0 0 24 24"><path d="M13 2.5L5 13.5h6l-1 8 8-11h-6l1-8z"/></svg>24/7 power</li>
+            <li><svg viewBox="0 0 24 24"><path d="M2 17c1.7 0 1.7 1.2 3.3 1.2S7 17 8.7 17s1.6 1.2 3.3 1.2S13.7 17 15.3 17s1.7 1.2 3.4 1.2S20.3 17 22 17M8 14V5.5a2 2 0 0 1 4 0M16 14V5.5a2 2 0 0 0-4 0M8 9h8"/></svg>Private pool</li>
+            <li><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="5.5"/><path d="M8.6 13.5L7.5 21.5l4.5-2.4 4.5 2.4-1.1-8"/></svg>Superhost</li>
+            <li><svg viewBox="0 0 24 24"><path d="M12 2.5l8 3v6c0 4.9-3.4 8.6-8 10-4.6-1.4-8-5.1-8-10v-6l8-3z"/><path d="M8.6 12l2.4 2.4 4.4-4.6"/></svg>Secure estate</li>
+            <li><svg viewBox="0 0 24 24"><path d="M2.5 16.5l19-6-1-3-5.5 1.7-6-4.7-2 .6 3.4 5.4-4.6 1.4L3.6 10l-1.5.5 1.4 4.5M3 20.5h18"/></svg>Airport pickup</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="similar">
+      <div class="sec-head"><h2>Similar Places to Stay</h2></div>
+      <div class="grid" id="simGrid"></div>
+    </div>
+  </div>
+</section>
+
+<script src="app.js"></script>
+</body>
+</html>
