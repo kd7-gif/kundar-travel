@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kundar Travel — Places to stay in Lagos, Abuja, Ibadan &amp; Port Harcourt</title>
 <meta name="description" content="Book apartments, villas and family homes in Lagos, Abuja, Ibadan and Port Harcourt with Kundar Travel.">
+<!-- Base URL of the Kundar Travel API. Leave empty to use the built-in demo listings only. -->
+<meta name="kundar-api" content="http://localhost:4000">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Gilda+Display&family=Urbanist:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -134,6 +136,7 @@
     <h2>Recommended Places to Stay</h2>
     <a href="#stays" class="see-all">See All</a>
   </div>
+  <p class="search-note" id="searchNote" hidden></p>
   <div class="grid" id="grid"></div>
 </main>
 

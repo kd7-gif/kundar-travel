@@ -1,40 +1,111 @@
 # Kundar Travel
 
-A cinematic stays-booking front end for places in **Lagos, Abuja, Ibadan and Port Harcourt**. Based in Lagos and Abuja.
+A stays-booking site for places in **Lagos, Abuja, Ibadan and Port Harcourt**, based in Lagos and Abuja. It has a cinematic front end and an Express + MySQL API that rules out double bookings in the database itself.
 
-- Three-slide hero with a soft, misty right-to-left wipe between slides, giant frosted titles and drifting clouds (generated in code on a canvas and screen-blended)
+> **Demo project — payments are unavailable.** No payment provider is connected and no money is ever taken. See [Demo limitations](#demo-limitations).
+
+## What it does
+
+**Front end** (`web/`, plain HTML/CSS/JS, no build step)
+- Three-slide hero with a misty right-to-left wipe, giant frosted titles and drifting clouds (generated in code on a canvas and screen-blended)
 - Round destination thumbnails on concentric rings, with an animated caption
-- Search bar with a working date-range calendar, a guest picker and a city picker
-- "Recommended Places to Stay" grid (8 stays, prices in ₦)
-- Card → detail page shared-element flight, with a booking card (dates carried over from the search, guest stepper, nightly total)
-- Fully responsive, with no horizontal scroll; custom cursor on desktop (add `?rec` to the URL for a larger cursor when screen-recording)
+- Search bar with a date-range calendar, a guest picker and a city picker; searching asks the API which stays are free
+- Card → detail page shared-element flight, with a booking card (dates carried over from the search, guest stepper capped at the listing's size, nightly total)
+- Fully responsive with no horizontal scroll; a custom cursor on desktop (add `?rec` to the URL for a larger cursor when screen-recording)
+- If the API can't be reached, the site falls back to built-in listings, so the static site still works on its own
 
-Plain HTML, CSS and JavaScript. No build step.
+**API** (`api/`, Node + Express 5 + MySQL)
+- Listings search by city, dates and number of guests, returning only stays that are free for every night
+- A listing's details and photos, and the nights it is unavailable (for greying out a calendar)
+- Prices are stored in kobo as integers, and dates as plain calendar dates in Lagos time
+
+## How double booking is prevented
+
+Every booking also writes **one row per night** to `booking_nights`, whose primary key is `(listing_id, night)`:
+
+```sql
+CREATE TABLE booking_nights (
+  listing_id INT UNSIGNED NOT NULL,
+  night      DATE NOT NULL,
+  booking_id BIGINT UNSIGNED NOT NULL,
+  PRIMARY KEY (listing_id, night),
+  ...
+);
+```
+
+A booking and its nights are inserted in one transaction. If two guests race for overlapping dates, the second insert hits a duplicate key (`ER_DUP_ENTRY`), its transaction rolls back, and the API answers **409 Conflict**. The guarantee comes from the database, not from a check in application code that two requests could both pass at the same moment. Check-out is exclusive, so one guest can leave the morning another arrives.
+
+Host-blocked dates use the same table. When a hold expires or is cancelled, its nights are deleted and become free again. Search also ignores expired holds before they are swept up.
 
 ## Run locally
 
-```bash
-python3 -m http.server 5180
+You need Node 22.9+ and MySQL 8+.
+
+**1. Create the database and a user** (as MySQL root):
+
+```sql
+CREATE DATABASE kundar CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'kundar'@'localhost' IDENTIFIED BY 'choose-a-password';
+GRANT ALL PRIVILEGES ON kundar.* TO 'kundar'@'localhost';
 ```
 
-Then open http://localhost:5180.
+**2. Configure, install and seed the API:**
 
-## Deploy (Netlify)
+```bash
+cd api
+cp .env.example .env        # then put your password in DB_PASSWORD
+npm install
+npm run db:seed             # rebuilds the tables and loads 8 listings + some blocked dates
+npm run dev                 # http://localhost:4000
+```
 
-Push this repo to GitHub, then in Netlify choose **Add new site → Import an existing project**, pick the repo, leave the build command empty and set the publish directory to `/`.
+**3. Serve the front end** (in a second terminal, from the repo root):
+
+```bash
+python3 -m http.server 5180 --directory web
+```
+
+Then open http://localhost:5180. The API URL comes from `<meta name="kundar-api">` in `web/index.html`.
+
+## API
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/api/health` | Database ping; reports `paymentsEnabled: false` |
+| GET | `/api/listings?city=&checkin=&checkout=&guests=` | All filters optional; dates are `YYYY-MM-DD` and must be sent together (1–60 nights, not in the past) |
+| GET | `/api/listings/:idOrSlug` | Details, host and photos |
+| GET | `/api/listings/:idOrSlug/unavailable?from=&to=` | Booked or blocked nights in a range (default: the next 180 days) |
+
+Errors look like `{ "error": { "code": "bad_request", "message": "checkout must be after checkin" } }`.
+
+## Demo limitations
+
+- **Payments are unavailable.** There is no payment provider. When booking is added, guests can hold dates for 15 minutes, then see "Payment is unavailable — this is a demo project." Holds expire on their own and the nights free up again. The payment step sits behind `PAYMENTS_ENABLED=false`, so a provider such as Paystack can be added later.
+- Listings, the host and the reviews are fictional demo content.
+
+## Roadmap
+
+1. ~~API, MySQL schema and seed; site reads listings and availability from the API~~ ✓
+2. Accounts (secure cookies), 15-minute holds, and a concurrency test (20 simultaneous requests → exactly 1 succeeds)
+3. "Payment unavailable" step on the site
+4. Host dashboard (React): listings and photos, blocking dates, viewing holds
+5. Deploy: Netlify (web), Render (API), hosted MySQL
+
+## Deploy the front end (Netlify)
+
+Import the GitHub repo in Netlify, leave the build command empty and set the publish directory to `web`.
 
 ## Files
 
 ```
-index.html   markup
-styles.css   all styles
-app.js       slides, clouds, rail, search popovers, cards, detail page
-img/         all photos, hosted locally
+web/            front end (index.html, styles.css, app.js, img/)
+api/src/        Express app: app.js, server.js, db.js, routes/, lib/
+api/db/         schema.sql and seed.js
 ```
 
 ## Photo credits
 
-All photos are downloaded into `img/`; nothing is hotlinked.
+All photos are downloaded into `web/img/`; nothing is hotlinked.
 
 Photos from [Pexels](https://www.pexels.com) are used under the [Pexels License](https://www.pexels.com/license/) (free to use; attribution is not required but is given here).
 

@@ -17,8 +17,11 @@ root.classList.add('intro');
 
 /* ---------------------------------------------------------
    DATA
+   Listings come from the API (see api/). FALLBACK is used only when the
+   API can't be reached, so the static site still works on its own.
    --------------------------------------------------------- */
-const STAYS = [
+const API = (document.querySelector('meta[name="kundar-api"]')?.content || '').replace(/\/$/, '');
+const FALLBACK = [
   { id: 1, name: 'Lekki Pool Terrace', area: 'Lekki Phase 1, Lagos', type: 'Apartments', price: 185000, rating: 4.9, reviews: 142, img: 'stay-1',
     about: 'A bright two-bedroom with its own plunge pool and a deep terrace, tucked into a quiet close off Admiralty Way. The canopy walk at Lekki Conservation Centre and the sand at Elegushi Beach are both a short drive away. In the evening there is suya from the corner spot, a swim under the palms, and the Link Bridge lighting up across the water.' },
   { id: 2, name: 'Ikoyi Lagoon Suite', area: 'Ikoyi, Lagos', type: 'Apartments', price: 150000, rating: 4.8, reviews: 128, img: 'stay-2',
@@ -36,6 +39,23 @@ const STAYS = [
   { id: 8, name: 'Victoria Island Sky Flat', area: 'Victoria Island, Lagos', type: 'Apartments', price: 160000, rating: 4.9, reviews: 183, img: 'stay-8',
     about: 'A sleek one-bedroom high in a Victoria Island tower, with city lights to the north and the Atlantic to the south. Eko Atlantic’s new waterfront is a few minutes away, and boats to Tarkwa Bay leave from the nearby jetty. Comes with a concierge, a gym and a rooftop pool.' }
 ];
+
+const MAX_GUESTS = { 1: 6, 2: 3, 3: 8, 4: 4, 5: 3, 6: 2, 7: 6, 8: 2 };
+const fromFallback = s => ({ ...s, city: s.area.split(', ').pop(), maxGuests: MAX_GUESTS[s.id],
+  img700: `img/${s.img}-700.jpg`, img1400: `img/${s.img}-1400.jpg` });
+const fromApi = l => ({ id: l.id, name: l.name, area: l.area, city: l.city, type: l.type, price: l.price,
+  rating: l.rating, reviews: l.reviews, about: l.about, maxGuests: l.maxGuests,
+  img700: l.image.small, img1400: l.image.large });
+
+let ALL = FALLBACK.map(fromFallback);   // every listing (for detail + similar)
+let apiOnline = false;
+
+async function api(path) {
+  const res = await fetch(API + path, { headers: { Accept: 'application/json' } });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw Object.assign(new Error(body.error?.message || `HTTP ${res.status}`), { status: res.status });
+  return body;
+}
 
 const SLIDES = [
   { thumb: 2, title: 'Discover Lagos', desc: 'Discover Lagos’s best places to stay and visit. Find suitable ones for you and your family' },
@@ -360,6 +380,7 @@ addEventListener('keydown', e => { if (e.key === 'Escape') { closePops(); if (de
 
 $('#send').addEventListener('click', e => {
   e.stopPropagation(); closePops();
+  runSearch();
   $('#stays').scrollIntoView({ behavior: 'smooth' });
 });
 
@@ -372,7 +393,7 @@ const PIN = '<svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke=
 
 function cardHTML(s) {
   return `<article class="card" data-id="${s.id}" tabindex="0" aria-label="${s.name}, ${s.area}">
-    <img src="img/${s.img}-700.jpg" alt="${s.name}, ${s.area}" loading="lazy">
+    <img src="${s.img700}" alt="${s.name}, ${s.area}" loading="lazy">
     <div class="price">${naira(s.price)}<small>/night</small></div>
     <button class="heart ${liked.has(s.id) ? 'on' : ''}" type="button" aria-label="Save ${s.name}">${HEART}</button>
     <div class="c-info">
@@ -399,7 +420,60 @@ function renderGrid(el, list) {
   el.innerHTML = list.map(cardHTML).join('');
   $$('.card', el).forEach(c => io.observe(c));
 }
-renderGrid($('#grid'), STAYS);
+renderGrid($('#grid'), ALL);
+
+const secTitle = $('#stays .sec-head h2');
+const DEFAULT_TITLE = secTitle.textContent;
+
+async function loadListings() {
+  try {
+    const data = await api('/api/listings');
+    ALL = data.listings.map(fromApi);
+    apiOnline = true;
+    renderGrid($('#grid'), ALL);
+  } catch (err) {
+    console.info('[Kundar] API unavailable, showing built-in listings:', err.message);
+  }
+}
+
+function showAll() {
+  secTitle.textContent = DEFAULT_TITLE;
+  $('#searchNote').hidden = true;
+  renderGrid($('#grid'), ALL);
+}
+
+async function runSearch() {
+  const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const guests = state.adults + state.children;
+  const q = new URLSearchParams({ city: state.city });
+  if (state.cin && state.cout) { q.set('checkin', iso(state.cin)); q.set('checkout', iso(state.cout)); }
+  if (guests) q.set('guests', guests);
+
+  let results;
+  if (apiOnline) {
+    try { results = (await api('/api/listings?' + q)).listings.map(fromApi); }
+    catch (err) { return showNote(err.message); }
+  } else {
+    // offline: filter by city and size only (no availability without the API)
+    results = ALL.filter(s => s.city === state.city && (!guests || s.maxGuests >= guests));
+  }
+
+  const parts = [];
+  if (state.cin && state.cout) parts.push(`${fmt(state.cin)} – ${fmt(state.cout)}`);
+  if (guests) parts.push(`${guests} guest${guests > 1 ? 's' : ''}`);
+  parts.push(`${results.length} stay${results.length === 1 ? '' : 's'}`);
+  secTitle.textContent = `Available in ${state.city}`;
+  showNote(parts.join(' · ') + (results.length ? '' : ' — try other dates or another city.'));
+  renderGrid($('#grid'), results);
+}
+
+function showNote(text) {
+  const n = $('#searchNote');
+  n.textContent = text;
+  n.hidden = false;
+}
+
+$('.see-all').addEventListener('click', e => { e.preventDefault(); showAll(); $('#stays').scrollIntoView({ behavior: 'smooth' }); });
 
 function toggleLike(id, btn) {
   liked.has(id) ? liked.delete(id) : liked.add(id);
@@ -441,18 +515,17 @@ function fillDetail(s) {
   $('#rStars').innerHTML = STAR.repeat(5);
   $('#dHeart').innerHTML = HEART;
   $('#dHeart').classList.toggle('on', liked.has(s.id));
-  dLo.src = `img/${s.img}-700.jpg`; dLo.alt = s.name;
+  dLo.src = s.img700; dLo.alt = s.name;
   dHi.classList.remove('ok');
   dHi.onload = () => dHi.classList.add('ok');
-  dHi.src = `img/${s.img}-1400.jpg`; dHi.alt = s.name;
+  dHi.src = s.img1400; dHi.alt = s.name;
   const total = state.adults + state.children;
-  bGuests = total || 2;
+  bGuests = clamp(total || 2, 1, s.maxGuests);
   const btn = $('#bBtn'); btn.textContent = 'Book Now'; btn.classList.remove('done');
   renderBooking();
   // similar: same city first, then the rest
-  const city = s.area.split(', ').pop();
-  const others = STAYS.filter(x => x.id !== s.id);
-  const sim = [...others.filter(x => x.area.endsWith(city)), ...others.filter(x => !x.area.endsWith(city))].slice(0, 4);
+  const others = ALL.filter(x => x.id !== s.id);
+  const sim = [...others.filter(x => x.city === s.city), ...others.filter(x => x.city !== s.city)].slice(0, 4);
   renderGrid($('#simGrid'), sim);
 }
 
@@ -465,13 +538,14 @@ function renderBooking() {
   $('#bOut').textContent = longFmt(cout);
   $('#bGuests').textContent = bGuests;
   $('#bStep [data-d="-1"]').disabled = bGuests <= 1;
+  $('#bStep [data-d="1"]').disabled = bGuests >= s.maxGuests;
   $('#bCalc').textContent = `${naira(s.price)} × ${nights} night${nights > 1 ? 's' : ''}`;
   $('#bTotal').textContent = naira(s.price * nights);
 }
 
 $('#bStep').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
-  bGuests = clamp(bGuests + +b.dataset.d, 1, 16);
+  bGuests = clamp(bGuests + +b.dataset.d, 1, currentStay.maxGuests);
   renderBooking();
 });
 $('#bBtn').addEventListener('click', e => {
@@ -481,7 +555,7 @@ $('#bBtn').addEventListener('click', e => {
 $('#dHeart').addEventListener('click', e => { if (currentStay) toggleLike(currentStay.id, e.currentTarget); });
 
 function openStay(id, cardEl, instant) {
-  const s = STAYS.find(x => x.id === id); if (!s) return;
+  const s = ALL.find(x => x.id === id); if (!s) return;
   const fromImg = cardEl && $('img', cardEl);
   const from = fromImg && fromImg.getBoundingClientRect();
   fillDetail(s);
@@ -564,6 +638,7 @@ function boot() {
   onScroll();
   requestAnimationFrame(frame);
   scheduleAuto();
+  loadListings();
   const m = location.hash.match(/^#stay-(\d+)$/);
   if (m) openStay(+m[1], null, true);
 }
