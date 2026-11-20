@@ -16,9 +16,10 @@ export const pool = mysql.createPool({
 // Every connection uses Lagos time, so NOW() and hold expiry line up with the calendar.
 pool.on('connection', conn => { conn.query("SET time_zone = '+01:00'"); });
 
-export async function withTransaction(fn) {
+export async function withTransaction(fn, { isolation } = {}) {
   const conn = await pool.getConnection();
   try {
+    if (isolation) await conn.query(`SET TRANSACTION ISOLATION LEVEL ${isolation}`);
     await conn.beginTransaction();
     const result = await fn(conn);
     await conn.commit();

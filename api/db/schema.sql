@@ -2,6 +2,7 @@
 -- Money is stored in kobo (₦1 = 100 kobo) as integers. Dates are calendar dates (Africa/Lagos).
 
 SET FOREIGN_KEY_CHECKS = 0;
+DROP TABLE IF EXISTS sessions;
 DROP TABLE IF EXISTS reviews;
 DROP TABLE IF EXISTS booking_nights;
 DROP TABLE IF EXISTS bookings;
@@ -18,6 +19,17 @@ CREATE TABLE users (
   role          ENUM('guest','host','admin') NOT NULL DEFAULT 'guest',
   avatar_url    VARCHAR(255) NULL,
   created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Login sessions. The browser holds a random token in an HttpOnly cookie;
+-- only its SHA-256 hash is stored, so a leaked table can't be replayed.
+CREATE TABLE sessions (
+  id         CHAR(64) PRIMARY KEY,              -- sha256(token), hex
+  user_id    INT UNSIGNED NOT NULL,
+  expires_at DATETIME NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_session_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_session_expiry (expires_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE listings (

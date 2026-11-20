@@ -17,6 +17,8 @@ A stays-booking site for places in **Lagos, Abuja, Ibadan and Port Harcourt**, b
 **API** (`api/`, Node + Express 5 + MySQL)
 - Listings search by city, dates and number of guests, returning only stays that are free for every night
 - A listing's details and photos, and the nights it is unavailable (for greying out a calendar)
+- Accounts with sign-up, log-in and log-out
+- 15-minute booking holds, which guests can release; expired holds free their nights automatically
 - Prices are stored in kobo as integers, and dates as plain calendar dates in Lagos time
 
 ## How double booking is prevented
@@ -34,6 +36,8 @@ CREATE TABLE booking_nights (
 ```
 
 A booking and its nights are inserted in one transaction. If two guests race for overlapping dates, the second insert hits a duplicate key (`ER_DUP_ENTRY`), its transaction rolls back, and the API answers **409 Conflict**. The guarantee comes from the database, not from a check in application code that two requests could both pass at the same moment. Check-out is exclusive, so one guest can leave the morning another arrives.
+
+This is tested: 20 guests sending the same booking at the same moment get exactly **one 201 and nineteen 409s**, and a second test does the same with overlapping (not identical) date ranges. Booking transactions run at `READ COMMITTED` and retry on a deadlock, so a lost race always ends as a clean 409.
 
 Host-blocked dates use the same table. When a hold expires or is cancelled, its nights are deleted and become free again. Search also ignores expired holds before they are swept up.
 
@@ -67,6 +71,17 @@ python3 -m http.server 5180 --directory web
 
 Then open http://localhost:5180. The API URL comes from `<meta name="kundar-api">` in `web/index.html`.
 
+**4. Run the tests** (optional). They use a separate `kundar_test` database, rebuilt on every run:
+
+```sql
+CREATE DATABASE kundar_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+GRANT ALL PRIVILEGES ON kundar_test.* TO 'kundar'@'localhost';
+```
+
+```bash
+cd api && npm test
+```
+
 ## API
 
 | Method | Path | Notes |
@@ -75,19 +90,38 @@ Then open http://localhost:5180. The API URL comes from `<meta name="kundar-api"
 | GET | `/api/listings?city=&checkin=&checkout=&guests=` | All filters optional; dates are `YYYY-MM-DD` and must be sent together (1–60 nights, not in the past) |
 | GET | `/api/listings/:idOrSlug` | Details, host and photos |
 | GET | `/api/listings/:idOrSlug/unavailable?from=&to=` | Booked or blocked nights in a range (default: the next 180 days) |
+| POST | `/api/auth/signup` | `{ name, email, password }` → sets the session cookie |
+| POST | `/api/auth/login` | `{ email, password }`; limited to 10 tries per 15 minutes |
+| POST | `/api/auth/logout` | Ends the session |
+| GET | `/api/auth/me` | `{ user }`, or `{ user: null }` when logged out |
+| POST | `/api/bookings` | 🔒 `{ listingId, checkIn, checkOut, guests }` → **201** hold for 15 minutes, or **409** `dates_unavailable` |
+| GET | `/api/bookings/mine` | 🔒 Your bookings: `held`, `expired` or `cancelled` |
+| GET | `/api/bookings/:id` | 🔒 One of your bookings |
+| DELETE | `/api/bookings/:id` | 🔒 Releases a hold and frees its nights |
+| POST | `/api/bookings/:id/pay` | 🔒 Always **503** `payments_unavailable` in this demo |
+
+🔒 = needs a logged-in session.
 
 Errors look like `{ "error": { "code": "bad_request", "message": "checkout must be after checkin" } }`.
 
+## Security notes
+
+- Passwords are hashed with scrypt (Node's built-in `crypto`), using a random salt per user.
+- Sessions use a random token in an `HttpOnly`, `SameSite=Lax` cookie. Only the token's SHA-256 hash is stored, so a copy of the `sessions` table can't be used to log in.
+- A failed login gives the same answer and takes about the same time whether or not the email exists.
+- `POST`, `PUT` and `PATCH` requests must be `application/json`, and CORS only allows the site's own origin. Together with SameSite cookies, this stops other sites from forging requests (CSRF).
+- When the site and API are on different domains in production, set `COOKIE_SAMESITE=none` and `COOKIE_SECURE=true`.
+
 ## Demo limitations
 
-- **Payments are unavailable.** There is no payment provider. When booking is added, guests can hold dates for 15 minutes, then see "Payment is unavailable — this is a demo project." Holds expire on their own and the nights free up again. The payment step sits behind `PAYMENTS_ENABLED=false`, so a provider such as Paystack can be added later.
+- **Payments are unavailable.** There is no payment provider. Guests can hold dates for 15 minutes; asking to pay returns "Payment is unavailable — this is a demo project." Holds then expire on their own, or the guest releases them, and the nights free up again. Bookings never become confirmed. The payment step sits behind `PAYMENTS_ENABLED=false`, so a provider such as Paystack can be added later.
 - Listings, the host and the reviews are fictional demo content.
 
 ## Roadmap
 
 1. ~~API, MySQL schema and seed; site reads listings and availability from the API~~ ✓
-2. Accounts (secure cookies), 15-minute holds, and a concurrency test (20 simultaneous requests → exactly 1 succeeds)
-3. "Payment unavailable" step on the site
+2. ~~Accounts (secure cookies), 15-minute holds, and a concurrency test (20 simultaneous requests → exactly 1 succeeds)~~ ✓
+3. Site: log-in, holding dates and the "Payment unavailable" step
 4. Host dashboard (React): listings and photos, blocking dates, viewing holds
 5. Deploy: Netlify (web), Render (API), hosted MySQL
 
@@ -100,7 +134,8 @@ Import the GitHub repo in Netlify, leave the build command empty and set the pub
 ```
 web/            front end (index.html, styles.css, app.js, img/)
 api/src/        Express app: app.js, server.js, db.js, routes/, lib/
-api/db/         schema.sql and seed.js
+api/db/         schema.sql, seed-lib.js (shared with tests) and seed.js
+api/test/       integration tests (node:test)
 ```
 
 ## Photo credits

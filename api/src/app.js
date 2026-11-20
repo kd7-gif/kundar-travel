@@ -2,6 +2,9 @@ import express from 'express';
 import cors from 'cors';
 import { pool } from './db.js';
 import { listingsRouter } from './routes/listings.js';
+import { authRouter } from './routes/auth.js';
+import { bookingsRouter } from './routes/bookings.js';
+import { loadUser } from './auth.js';
 import { HttpError } from './lib/errors.js';
 
 export function createApp() {
@@ -14,12 +17,25 @@ export function createApp() {
   app.use(cors({ origin: origins, credentials: true }));
   app.use(express.json({ limit: '100kb' }));
 
+  // CSRF defence in depth (on top of SameSite cookies and the CORS allowlist):
+  // state-changing requests must be JSON, which a cross-site HTML form cannot send.
+  app.use((req, _res, next) => {
+    const type = String(req.headers['content-type'] || '').toLowerCase();
+    if (['POST', 'PUT', 'PATCH'].includes(req.method) && !type.startsWith('application/json')) {
+      return next(new HttpError(415, 'json_required', 'Send requests as application/json'));
+    }
+    next();
+  });
+  app.use(loadUser);
+
   app.get('/api/health', async (_req, res) => {
     await pool.query('SELECT 1');
     res.json({ ok: true, paymentsEnabled: process.env.PAYMENTS_ENABLED === 'true' });
   });
 
   app.use('/api/listings', listingsRouter);
+  app.use('/api/auth', authRouter);
+  app.use('/api/bookings', bookingsRouter);
 
   app.use((_req, _res, next) => next(new HttpError(404, 'not_found', 'Route not found')));
 
