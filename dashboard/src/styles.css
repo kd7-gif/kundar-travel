@@ -103,8 +103,8 @@ code{font-size:.9em;background:rgba(0,0,0,.06);padding:1px 5px;border-radius:4px
 .lgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px}
 .lcard{background:#fff;border-radius:16px;overflow:hidden;text-decoration:none;box-shadow:0 1px 0 var(--line);transition:transform .35s var(--out),box-shadow .35s}
 .lcard:hover{transform:translateY(-3px);box-shadow:0 16px 36px rgba(110,60,50,.12)}
-.lcard-img{aspect-ratio:4/3;background:var(--peach-soft);display:grid;place-items:center;color:var(--light);font-size:14px}
-.lcard-img img{width:100%;height:100%;object-fit:cover;display:block}
+.lcard-img{position:relative;overflow:hidden;aspect-ratio:4/3;background:var(--peach-soft);display:grid;place-items:center;color:var(--light);font-size:14px}
+.lcard-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
 .lcard-body{padding:14px 16px 16px}
 .lcard-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
 .lcard h3{font-size:16.5px;font-weight:600}
